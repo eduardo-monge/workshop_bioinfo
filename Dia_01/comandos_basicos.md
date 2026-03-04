@@ -1,1 +1,1 @@
-
+# omandos básicos
