@@ -1,4 +1,4 @@
-#📂 Workshop de Bioinformática: Da Sequência ao VCF
+#Workshop de Bioinformática: Da Sequência ao VCF
 Bem-vindo ao repositório central do nosso workshop! Este espaço contém todo o material teórico, roteiros práticos e códigos necessários para realizar o fluxo completo de análise de variantes genéticas.
 
 🎯 Objetivos do curso
