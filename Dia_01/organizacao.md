@@ -6,25 +6,42 @@ Nesta primeira prática, vamos configurar nosso ambiente de trabalho e aprender 
 
 ## 1. Configuração da Estrutura de Diretórios
 
-A organização é o primeiro passo para a reprodutibilidade. Vamos criar uma hierarquia lógica para o nosso projeto de bioinformática.
+A organização é o primeiro passo para a reprodutibilidade. Vamos criar uma hierarquia lógica para o nosso projeto de bioinformática. Vamos a seguir a lógica recomendada por [Noble (2009) "A Quick Guide to Organizing Computational Biology Project"](https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1000424)
 
 ```bash
 # Navegar para o diretório pessoal
 cd ~
 
 # Criar a pasta raiz do curso (caso ainda não tenha criado)
+mkdir -p ~/workshop_bioinfo
+cd ~/workshop_bioinfo
+
+#Se quiser fazer tudo numa linha só
 mkdir -p ~/workshop_bioinfo && cd ~/workshop_bioinfo
 
+# -----------------------------------------
+#A opção -p significa “pais”.
+#Ela instrui o sistema a:
+#1️⃣ Criar todos os diretórios pais, caso eles não existam
+#2️⃣ Evitar gerar um erro se o diretório já existir
+# -----------------------------------------
+
 # Criar subpastas estruturadas
-mkdir -p data/raw data/processed/trimmed data/processed/aligned
-mkdir -p results/qc results/vcf_raw results/vcf_filtered
-mkdir -p scripts logs docs
+mkdir -p data/raw data/trimmed data/mapped
+mkdir -p results/qc results/snp_calling results/vcf_filtered
+mkdir -p scripts #Opcional para o tutorial, recomendado para seus projetos pessoais. 
 
 # Verificar a estrutura criada
 ls -R
+
+# -----------------------------------------
+#A opção -R significa “recursive”.
+#Ele instrui o comando ls a listar o conteúdo dos diretórios e todos os seus subdiretórios recursivamente.
+# -----------------------------------------
 ```
 ## 2. Download de Dados de Sequenciamento (FASTQ)
 Vamos baixar um conjunto de dados reduzido (subset) para praticar os comandos de manipulação. Utilizaremos o comando wget.
+![Pipeline overview](images/pipeline.png)
 
 ```bash
 # Entrar na pasta de dados brutos
