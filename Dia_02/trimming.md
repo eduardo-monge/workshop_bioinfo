@@ -54,15 +54,15 @@ cd data/demultiplex
 # -1 e -2: Arquivos brutos (Forward e Reverse)
 # -b: Arquivo de texto com os barcodes
 # -o: Pasta de saída
-# -e: Enzima de restrição usada (ex: ecori)
+# -e: Enzima de restrição usada
 # -r, -c, -q: Limpar reads órfãos, corrigir barcodes e checar qualidade básica
 
 process_radtags -1 ../data/raw/sample_R1.fastq -2 ../../data/raw/sample_R2.fastq \
                 -b ../data/barcodes.txt -o . -e ecori -r -c -q
 ```
 
-⚠️ **ATENÇÃO**
-> Em nosso exemplo, usamos uma biblioteca sequenciada single-end. Caso você tenha uma biblioteca paired-end, o comando a seguir ajuda a indicar onde se encontram as leituras R1 e R2.
+💡 **Single-end sequencing versus paired-end sequencing**
+> Em nosso exemplo, usamos uma biblioteca sequenciada single-end. Caso você tenha uma biblioteca paired-end, o comando a seguir ajuda a indicar onde se encontram as leituras R1 e R2. Os demais parâmetros são semelhantes.
 >
 ```bash
 process_radtags -1 ../data/raw/sample_R1.fastq -2 ../../data/raw/sample_R2.fastq
