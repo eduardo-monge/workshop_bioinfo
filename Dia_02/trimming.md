@@ -37,10 +37,36 @@ nano barcodes.txt
 ```
 (Para salvar: pressione Ctrl + O e depois Enter. Para sair: Ctrl + X)
 
+⚠️ **ATENÇÃO**
+>Lembre-se de verificar se cada código de barras corresponde realmente à amostra. Sempre verifique e mantenha seu mapa da placa em ordem. 
 
 
 ### 1. Executar `process_radtags`
+Agora estamos prontos para executar o programa. A documentação completa com todos os parâmetros e casos está disponível na página do [STACKS](https://catchenlab.life.illinois.edu/stacks/comp/process_radtags.php).
 
+```bash
+# 1. Navegar para a pasta onde criaremos os resultados demultiplexados
+cd ~/workshop_bioinfo
+mkdir -p data/demultiplex
+cd data/demultiplex
+
+# 2. Executar o STACKS (Substitua as informações conforme sua enzima e arquivos)
+# -1 e -2: Arquivos brutos (Forward e Reverse)
+# -b: Arquivo de texto com os barcodes
+# -o: Pasta de saída
+# -e: Enzima de restrição usada (ex: ecori)
+# -r, -c, -q: Limpar reads órfãos, corrigir barcodes e checar qualidade básica
+
+process_radtags -1 ../data/raw/sample_R1.fastq -2 ../../data/raw/sample_R2.fastq \
+                -b ../data/barcodes.txt -o . -e ecori -r -c -q
+```
+
+⚠️ **ATENÇÃO**
+> Em nosso exemplo, usamos uma biblioteca sequenciada single-end. Caso você tenha uma biblioteca paired-end, o comando a seguir ajuda a indicar onde se encontram as leituras R1 e R2.
+>
+```bash
+process_radtags -1 ../data/raw/sample_R1.fastq -2 ../../data/raw/sample_R2.fastq
+ ```
 
 ## 2. Demultiplexação com STACKS (`process_radtags`)
 ## 3. Demultiplexação com STACKS (`process_radtags`)
