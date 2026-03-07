@@ -57,8 +57,13 @@ cd data/demultiplex
 # -e: Enzima de restrição usada
 # -r, -c, -q: Limpar reads órfãos, corrigir barcodes e checar qualidade básica
 
-process_radtags -1 ../data/raw/sample_R1.fastq -2 ../../data/raw/sample_R2.fastq \
-                -b ../data/barcodes.txt -o . -e ecori -r -c -q
+process_radtags -1 ../data/raw/sample_R1.fastq \
+                -b ../data/barcodes.txt \
+                -o . \
+                -e ecori \
+                -r \
+                -c \
+                -q
 ```
 
 💡 **Single-end sequencing versus paired-end sequencing**
