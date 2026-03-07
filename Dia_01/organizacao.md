@@ -8,6 +8,8 @@ Nesta primeira prática, vamos configurar nosso ambiente de trabalho e aprender 
 
 A organização é o primeiro passo para a reprodutibilidade. Vamos criar uma hierarquia lógica para o nosso projeto de bioinformática. Vamos a seguir a lógica recomendada por [Noble (2009) "A Quick Guide to Organizing Computational Biology Project"](https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1000424)
 
+![Estrutura de diretórios para um projeto de exemplo](Dia_01/Nomble(2009).png)
+
 ```bash
 # Navegar para o diretório pessoal
 cd ~
