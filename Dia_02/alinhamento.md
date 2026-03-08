@@ -51,8 +51,42 @@ BEGIN {chr=1; un=1}
 }
 {print}
 ' acrocomia_ref.fasta > acrocomia_ref_renamed.fasta
+
+# -----------------------------------------
+#O que o script faz
+1. Detecta cabeçalhos FASTA (/^>/)
+2. Modifica apenas linhas que começam com >.
+3. Se o cabeçalho contiver “cromossomo” ($0 ~ /cromossomo/), então atribui:
+>CHR1
+>CHR2
+>CHR3
+usando o contador chr.
+4. Se não, presume que é um contíguo não resolvido:
+>UNRE1
+>UNRE2
+usando o contador un.
+# -----------------------------------------
 ```
 
-### B. Gerar o índice
 # 2. Indexar a referência usando o BWA
-bwa index acrocomia_ref.fasta
+Com o genoma de referência pronto e conhecido, podemos gerar o índice. Lembre-se de que o índice é a estratégia para pesquisar rapidamente dentro do genoma e otimizar os métodos de mapeamento. 
+
+Este é um processo muito simples, utilizando o programa [bwa](https://github.com/lh3/bwa).
+
+```bash
+bwa index acrocomia_ref_renamed.fasta
+```
+
+🔍 O que observar: 
+Use o comando `ls -lh`. Você verá arquivos com extensões `.bwt`, `.ann`, `.pac`, `.sa` e `.amb`. 
+
+Atenção: Se você mudar o arquivo .fasta de pasta, precisa levar todos esses arquivos de índice junto, senão o alinhamento falhará!
+
+
+
+
+
+
+
+
+
