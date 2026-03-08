@@ -27,7 +27,7 @@ gunzip GCA_055471735.1_USP_Acracu_1.0_genomic.fna.gz
 mv GCA_055471735.1_ASM5547173v1_genomic.fna acrocomia_ref.fasta
 ```
 
-Agora vamos explorar o genoma de referência para nos familiarizarmos com ele. 
+Agora vamos explorar o genoma de referência para nos familiarizarmos com ele. Lembre-se de que o genoma é um arquivo fasta. 
 
 
 ### B. Gerar o índice
