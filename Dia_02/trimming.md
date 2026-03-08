@@ -73,5 +73,23 @@ process_radtags -1 ../data/raw/sample_R1.fastq \
 process_radtags -1 ../data/raw/sample_R1.fastq -2 ../../data/raw/sample_R2.fastq
  ```
 
-## 2. Demultiplexação com STACKS (`process_radtags`)
-## 3. Demultiplexação com STACKS (`process_radtags`)
+## 2. Controle de Qualidade Inicial (QC)
+Agora que temos nossos arquivos FASTQ separados por amostra, precisamos fazer a avaliação dos arquivos para garantir dados de alta qualidade para análises posteriores. 
+
+Lembre-se de que os arquivos são arquivos FASTQ, que são arquivos FASTA modificados para incluir também informações sobre a qualidade do sequenciamento para cada base (PHRED score). A qualidade Q reflete a probabilidade p de que a base esteja incorreta. Os valores de Q podem variar de 0 a 93 (mas a pontuação máxima que você normalmente verá é 40). Para economizar espaço em um arquivo FASTQ, cada pontuação de qualidade é transformada em um único caractere ASCII.
+<img width="877" height="267" alt="5d0a8f1b-4a1d-4777-b8c9-a4325d242560" src="https://github.com/user-attachments/assets/8d1eb519-f2a2-481c-90bc-fbfa91fa0b23" />
+
+### 0. Visualizando os arquivos FASTQ
+Antes de gerar os arquivos de qualidade, vamos usar comandos básicos do UNIX para explorar os dados e nos familiarizar com o formato FASTQ.
+
+A. Primeiro use o os comandos `cat`/`head` para inspecionar um arquivo fastq.
+❓ Quais são os caracteres iniciais do cabeçalho para todas as leituras?
+
+```bash
+zcat drive/MyDrive/Curso_PopGen_Genotropics/raw_fastq/SRR957824_500K_R1.fastq.gz | head
+
+
+```
+
+
+## 3. Limpeza de Dados (Trimming)
