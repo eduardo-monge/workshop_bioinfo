@@ -309,3 +309,12 @@ done
 Agora, basta executar o MultiQC para obter um resumo de tudo o que foi feito pelo TrimGalore.
 ❓Como os resultados do fasp se comparam aos do multiQC? Há grandes mudanças?
 
+
+---
+💡 Dicas: Melhores práticas para a qualidade dos dados
+1. Retenha os metadados: Mantenha registros e resumos do FastQC e Fastp para reproducibilidade.
+2. Otimize os parâmetros: personalize as configurações do Fastp/TrimGalore (por exemplo, limites de corte) com base nos relatórios do FastQC.
+3. Processamento em lote: use loops ou job arrays para grandes conjuntos de dados.
+4. Salve os outputs: mantenha um diretório estruturado com dados brutos, aparados e com qualidade verificada.
+
+Seguindo esse fluxo de trabalho, você garante que seus dados de sequenciamento sejam de alta qualidade e estejam prontos para análise posterior. Essas ferramentas e técnicas são fundamentais na genômica, ajudando a maximizar a confiabilidade e a precisão dos seus resultados.
