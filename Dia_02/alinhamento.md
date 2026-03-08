@@ -266,9 +266,9 @@ done
 # -----------------------------------------
 Os parámetros que estamos usando:
 #printf=escrever o cabeçalho da tabela, contendo duas colunas:
- - Amostra — identificação da amostra analisada
- - Profundidade_Media — valor médio da cobertura de sequenciamento
-O símbolo > indica redirecionamento de saída, o que significa que o conteúdo será escrito no arquivo especificado. Caso o arquivo já exista, ele será sobrescrito, garantindo que um novo resumo seja gerado para cada execução do script.
+# -Amostra — identificação da amostra analisada
+# -Profundidade_Media — valor médio da cobertura de sequenciamento
+# O símbolo > indica redirecionamento de saída, o que significa que o conteúdo será escrito no arquivo especificado. Caso o arquivo já exista, ele será sobrescrito, garantindo que um novo resumo seja gerado para cada execução do script.
 #samtools flagstat -a=  Calcula um conjunto de estatísticas fundamentais do alinhamento. Incluindo -a incluimos posições com cobertura 0. 
 #samtools depth = calcula a profundidade média de cobertura genômica para cada amostra.
 # -----------------------------------------
@@ -279,53 +279,47 @@ Agora abra os arquivos gerados e veja as estatísticas gerais.
 ❓Como foi o nosso mapeamento?
 
 ---
+# Mapeando no dia a dia
+Como vimos, durante esse processo são gerados muitos arquivos intermediários que não usamos para a chamada de SNPs. Isso ocupa espaço em nosso computador/servidor. 
 
+Para mitigar esse problema, na vida real usamos um único script que faz todo o mapeamento, conversão e filtragem dos arquivos e retorna no final apenas um arquivo .bam final pronto para a chamada de SNPs. 
 
+Quando estamos começando com a análise de dados, é recomendável seguir o processo passo a passo para entender o que está sendo feito e ter certeza do processo. Quando já estivermos familiarizados com os programas e parâmetros, podemos otimizar essa etapa. 
 
+💡 Script "Tudo-em-Um"
+```bash
+# 1. Indexar o genoma de referência (Isso é feito apenas UMA vez antes do loop)
+echo "Indexando o genoma de referência..."
+bwa index ../../reference/acrocomia_ref.fasta
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# Loop para alinhar todas as amostras Single-End
+# 2. O Lloop de processamento
 for file in ../trimmed/*_clean.fastq; do
+    # Extrair o nome da amostra
+    SAMPLE=$(basename $file _clean.fastq)
+    echo "Iniciando processamento em cadeia da amostra: $SAMPLE"
 
-    SAMPLE=$(basename "$file" _clean.fastq)
+    # PASSO A: Alinhamento (BWA) + Conversão/Filtro (View) + Ordenação (Sort)
+    # Note os pipes (|) conectando os programas sem gerar arquivos intermediários pesados
+    bwa mem -t 4 -R "@RG\tID:$SAMPLE\tSM:$SAMPLE\tPL:ILLUMINA" \
+        ../../reference/acrocomia_ref.fasta $file | \
+    samtools view -F 4 -q 20 -b - | \
+    samtools sort -o ${SAMPLE}.tmp.sorted.bam
 
-    echo "Alinhando a amostra: $SAMPLE"
+    # PASSO B: Remoção de Duplicatas (Picard)
+    picard MarkDuplicates \
+        I=${SAMPLE}.tmp.sorted.bam \
+        O=${SAMPLE}.final.bam \
+        M=${SAMPLE}_dup_metrics.txt \
+        REMOVE_DUPLICATES=true \
+        VALIDATION_STRINGENCY=SILENT
 
-    bwa mem -t 8 \
-        -R "@RG\tID:$SAMPLE\tSM:$SAMPLE\tPL:ILLUMINA" \
-        ../../reference/acrocomia_ref_renamed.fasta \
-        "$file" | \
-    samtools view -@ 4 -b | \
-    samtools sort -@ 4 -o ${SAMPLE}.sorted.bam
+    # PASSO C: Indexação do BAM Final
+    samtools index ${SAMPLE}.final.bam
 
-    samtools index ${SAMPLE}.sorted.bam
-
+    # PASSO D: Limpeza inteligente (Apagar o arquivo temporário ordenado)
+    rm ${SAMPLE}.tmp.sorted.bam
+    
+    echo "Amostra $SAMPLE finalizada com sucesso!"
 done
+```
 
