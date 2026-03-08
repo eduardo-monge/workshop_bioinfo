@@ -27,6 +27,7 @@ gunzip GCA_055471735.1_USP_Acracu_1.0_genomic.fna.gz
 mv GCA_055471735.1_ASM5547173v1_genomic.fna acrocomia_ref.fasta
 ```
 Agora vamos explorar o genoma de referência para nos familiarizarmos com ele. Lembre-se de que o genoma é um arquivo fasta. 
+
 ❓Como esperam que seja o genoma?
 ❓Quantas e quais sequências estão presentes no arquivo fasta que usaremos como referência?
 
@@ -119,8 +120,212 @@ Os parámetros que estamos usando:
 ```
 
 Use o less para se mover dentro do arquivo SAM.
+
 ❓Como está o arquivo? O que significa da parte dele? 
 
+Agora que validamos o comando, vamos rodar para todos os arquivos que limpamos anteriormente. da forma como rodaríamos na vida real. 
+
+⚠️ **Atenção:**
+O arquivo SAM é muito pesado e ocupa muito espaço no computador, por isso normalmente não o geramos. Na prática, usamos `view` do [samtools](https://www.htslib.org/doc/samtools-depth.html) para converter automaticamente o SAM em BAM. 
+
+```bash
+# Loop para alinear y convertir todas las muestras Single-End
+for file in ../trimmed/*_clean.fastq; do
+    # Extraer solo el nombre de la muestra (ej: Acro_01)
+    SAMPLE=$(basename $file _clean.fastq)
+    
+    echo "Alineando y convirtiendo la muestra: $SAMPLE"
+
+    bwa mem -t 4 \
+        -R "@RG\tID:$SAMPLE\tSM:$SAMPLE\tPL:ILLUMINA" \
+        ../../reference/acrocomia_ref.fasta \
+        $file |\
+ samtools view -b - > ${SAMPLE}_nofilers.bam
+done
+```
+
+Vamos agora usar a mesma ferramenta de `view` para visualizar o resultado do bam.
+
+```bash
+samtools view ${SAMPLE}_nofilers.bam | head
+```
+
+❓O que é cada parte do arquivo bam?
+
+# 4. Visualizações e filtros pós-alinhamento
+Agora já temos nossas sequências alinhadas no formato BAM. No entanto, antes de poder usá-las para chamar os SNPs, precisamos verificar a qualidade do mapeamento e realizar os filtros necessários.
+
+Vamos aplicar um **Filtro de Qualidade de Mapeamento (MAPQ)** e, em seguida, organizaremos as informações.
+
+### A. Filtrar e ordenar (Samtools)
+Os programas posteriores precisam que as leituras estejam ordenadas da esquerda para a direita ao longo dos cromossomos (coordenadas genômicas). Podemos filtrar as leituras ruins e ordená-las ao mesmo tempo usando nosso velho amigo, o Pipe (`|`).
+
+```bash
+# Filtrar reads não mapeados (-F 4), reter reads com qualidade >= 20 e ordenar por coordenadas
+samtools view -F 4 -q 20 -b Acro_01.bam |\
+samtools sort -o Acro_01_filter.sorted.bam
+
+# Indexar o arquivo ordenado (Gera o índice posicional .bai)
+samtools index Acro_01.sorted.bam
+```
+
+### B. Mitigação de Vieses Técnicos: Duplicatas de PCR (Picard)
+Durante a confecção das bibliotecas genômicas, a etapa de amplificação por PCR pode introduzir um viés estocástico, gerando cópias artificiais (clones) de um mesmo fragmento de DNA. Se estas duplicatas não forem expurgadas, o algoritmo de Variant Calling interpretará erroneamente essas cópias como evidência de alta profundidade de cobertura para um alelo específico, distorcendo severamente as estimativas de frequências alélicas da população. 
+
+Usaremos a ferramenta `MarkDuplicates` de [Picard](https://gatk.broadinstitute.org/hc/en-us/articles/360037052812-MarkDuplicates-Picard) para mitigar este artefato.
+
+```bash
+# Executar a remoção de duplicatas com Picard MarkDuplicates
+picard MarkDuplicates \
+    I=Acro_01_filter.sorted.bam \
+    O=Acro_01.dedup.bam \
+    M=Acro_01_dup_metrics.txt \
+    REMOVE_DUPLICATES=true 
+
+# A geração de um novo arquivo BAM exige uma nova indexação
+samtools index Acro_01.dedup.bam
+
+# -----------------------------------------
+Os parámetros que estamos usando:
+#I=Input
+#O=Output
+#M= Metrics. Gera um relatório quantitativo contendo a proporção exata de sequências que consistiam em artefatos de PCR.
+#REMOVE_DUPLICATES=true. Fala para o programa deletar fisicamente as duplicatas dos dados, não apenas marcá-las.
+# -----------------------------------------
+```
+
+### 🤖 Automação do Pós-Processamento
+Tendo validado a eficácia do protocolo em uma amostra empírica, implementaremos um laço de repetição iterativo (loop) para processar toda a coorte de forma automatizada.
+```bash
+# Certifique-se de que o diretório ativo seja a pasta de alinhamento
+cd ~/workshop_bioinfo/data/processed/alignment
+
+for bam in *.bam; do
+    SAMPLE=$(basename $bam .bam)
+    echo "Iniciando processamento da amostra: $SAMPLE"
+
+    # 1. Filtragem (-F 4 e -q 20) acoplada à ordenação posicional
+    echo "Aplicando filtros (MAPQ/Flags) e Ordenando"
+    samtools view -F 4 -q 20 -b $bam | samtools sort -o ${SAMPLE}.sorted.bam
+    
+    # 2. Supressão de Duplicatas de PCR
+    echo "Identificando e removendo duplicatas técnicas"
+    picard MarkDuplicates \
+        I=${SAMPLE}.sorted.bam \
+        O=${SAMPLE}.dedup.bam \
+        M=${SAMPLE}_dup_metrics.txt \
+        REMOVE_DUPLICATES=true 
+
+    # 3. Indexação do BAM final
+    echo "Computando índice genômico"
+    samtools index ${SAMPLE}.dedup.bam
+
+    # 4. Higiene de Dados: Exclusão de matrizes intermediárias
+    rm $bam
+    rm ${SAMPLE}.sorted.bam
+done
+```
+⚠️ **Atenção:**
+A exclusão de arquivos intermediários (.bam bruto e .sorted.bam) previne a exaustão da capacidade de armazenamento do servidor, retendo estritamente o arquivo .dedup.bam, que está lapidado e pronto para a inferência de variantes.
 
 
+# 5. Check as estatísticas básicas do bam
+O último passo é revisar as estatísticas finais do mapeamento para verificar se tudo está correto e se aproveitamos bem as sequências. Este é um passo vital, pois nos permite considerar se precisamos ajustar os parâmetros de mapeamento ou se podemos seguir em frente. 
+
+Para esta fase, utilizaremos duas ferramentas do samtools: 
+1. `flagstat` para gerar estatísticas rápidas de alinhamentos do arquivo bam.
+2. `depth` para calcular a cobertura do nosso arquivo bam.
+
+```bash
+# 1. Navegar para o diretório com os BAM finais
+cd ~/workshop_bioinfo/data/processed/alignment
+
+# 2. Criar pasta para relatórios de QC
+mkdir stats
+
+# 3. Criar arquivo de resumo da profundidade média
+printf "Amostra\tProfundidade_Media\n" > ../stats/resumo_profundidade.txt
+
+# 4. Loop para todas as amostras
+for bam in *.dedup.bam; do
+
+    SAMPLE=$(basename "$bam" .dedup.bam)
+    echo "Processando amostra: $SAMPLE"
+
+    # A. Estatísticas de alinhamento
+    samtools flagstat -a "$bam" > ../qc_alignment/"${SAMPLE}_flagstat.txt"
+
+    # B. Cálculo da profundidade média
+    DEPTH=$(samtools depth "$bam" | awk '{sum+=$3} END {print sum/NR}')
+
+    # Guardar resultado no resumo
+    printf "%s\t%.2f\n" "$SAMPLE" "$DEPTH" >> ../qc_alignment/resumo_profundidade.txt
+
+done
+
+# -----------------------------------------
+Os parámetros que estamos usando:
+#printf=escrever o cabeçalho da tabela, contendo duas colunas:
+ - Amostra — identificação da amostra analisada
+ - Profundidade_Media — valor médio da cobertura de sequenciamento
+O símbolo > indica redirecionamento de saída, o que significa que o conteúdo será escrito no arquivo especificado. Caso o arquivo já exista, ele será sobrescrito, garantindo que um novo resumo seja gerado para cada execução do script.
+#samtools flagstat -a=  Calcula um conjunto de estatísticas fundamentais do alinhamento. Incluindo -a incluimos posições com cobertura 0. 
+#samtools depth = calcula a profundidade média de cobertura genômica para cada amostra.
+# -----------------------------------------
+
+```
+Agora abra os arquivos gerados e veja as estatísticas gerais. 
+
+❓Como foi o nosso mapeamento?
+
+---
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Loop para alinhar todas as amostras Single-End
+for file in ../trimmed/*_clean.fastq; do
+
+    SAMPLE=$(basename "$file" _clean.fastq)
+
+    echo "Alinhando a amostra: $SAMPLE"
+
+    bwa mem -t 8 \
+        -R "@RG\tID:$SAMPLE\tSM:$SAMPLE\tPL:ILLUMINA" \
+        ../../reference/acrocomia_ref_renamed.fasta \
+        "$file" | \
+    samtools view -@ 4 -b | \
+    samtools sort -@ 4 -o ${SAMPLE}.sorted.bam
+
+    samtools index ${SAMPLE}.sorted.bam
+
+done
 
