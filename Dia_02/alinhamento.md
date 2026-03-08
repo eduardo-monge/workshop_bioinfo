@@ -26,9 +26,32 @@ gunzip GCA_055471735.1_USP_Acracu_1.0_genomic.fna.gz
 # 4. Renomear para facilitar o uso (opcional, mas recomendado)
 mv GCA_055471735.1_ASM5547173v1_genomic.fna acrocomia_ref.fasta
 ```
-
 Agora vamos explorar o genoma de referência para nos familiarizarmos com ele. Lembre-se de que o genoma é um arquivo fasta. 
+❓Como esperam que seja o genoma?
+❓Quantas e quais sequências estão presentes no arquivo fasta que usaremos como referência?
 
+```bash
+head acrocomia_ref.fasta
+grep -c "^>" acrocomia_ref.fasta
+```
+Uma boa prática é modificar o nome dos cromossomos para que seja muito mais simples ler nos próximos programas. Para isso, podemos usar o seguinte script para modificar e deixar o genoma pronto para fazer o índice. 
+
+```bash
+awk '
+BEGIN {chr=1; un=1}
+/^>/ {
+    if ($0 ~ /chromosome/) {
+        print ">CHR" chr
+        chr++
+    } else {
+        print ">UNRE" un
+        un++
+    }
+    next
+}
+{print}
+' acrocomia_ref.fasta > acrocomia_ref_renamed.fasta
+```
 
 ### B. Gerar o índice
 # 2. Indexar a referência usando o BWA
