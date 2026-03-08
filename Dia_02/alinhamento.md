@@ -53,18 +53,18 @@ BEGIN {chr=1; un=1}
 ' acrocomia_ref.fasta > acrocomia_ref_renamed.fasta
 
 # -----------------------------------------
-#O que o script faz
-1. Detecta cabeçalhos FASTA (/^>/)
-2. Modifica apenas linhas que começam com >.
-3. Se o cabeçalho contiver “cromossomo” ($0 ~ /cromossomo/), então atribui:
->CHR1
->CHR2
->CHR3
-usando o contador chr.
-4. Se não, presume que é um contíguo não resolvido:
->UNRE1
->UNRE2
-usando o contador un.
+O que o script faz
+#1. Detecta cabeçalhos FASTA (/^>/)
+#2. Modifica apenas linhas que começam com >.
+#3. Se o cabeçalho contiver “cromossomo” ($0 ~ /cromossomo/), então atribui:
+#>CHR1
+#>CHR2
+#>CHR3
+#usando o contador chr.
+#4. Se não, presume que é um contíguo não resolvido:
+#>UNRE1
+#>UNRE2
+#usando o contador un.
 # -----------------------------------------
 ```
 
@@ -83,9 +83,43 @@ Use o comando `ls -lh`. Você verá arquivos com extensões `.bwt`, `.ann`, `.pa
 Atenção: Se você mudar o arquivo .fasta de pasta, precisa levar todos esses arquivos de índice junto, senão o alinhamento falhará!
 
 
+# 3. Mapeamento do genoma de referência utilizando o BWA-MEM
+Agora vamos correr o [bwa mem](https://github.com/lh3/bwa) para mapear as reads da macaúba a esta referência. O alinhamento é o processo de encontrar a posição exata de cada read no genoma da Macaúba. Como nossas sequências são Single-End, o comando é direto. 
 
+### A. Criando a estrutura de pastas
+Primeiro, vamos organizar onde os resultados (arquivos SAM) serão salvos.
 
+```bash
+# 1. Criar pasta para o alinhamento e entrar nela
+cd ~/workshop_bioinfo/data/processed
+mkdir -p alignment
+cd alignment
+```
 
+### B. Rodando o Alinhamento
+Vamos testar o comando para a primeira amostra para compreender o que está sendo feito. 
+
+```bash
+Comando para alinhar UMA amostra
+bwa mem -t 4 \
+    -R "@RG\tID:Acro_01\tSM:Acro_01\tPL:ILLUMINA" \
+    ../../reference/acrocomia_ref_renamed.fasta \
+    ../trimmed/Acrocomia_pop1_.fastq \
+    > Acro_01.sam
+
+# -----------------------------------------
+Os parámetros que estamos usando:
+#bwa mem: Algoritmo de alinhamento BWA otimizado para leituras de 70–1000 bp.
+#-t 4: Utiliza 4 threads (núcleos de CPU). Se o seu computador tiver mais núcleos, você pode aumentar (-t 8, -t 16)
+#-R "@RG\tID:Acro_01\tSM:Acro_01\tPL:ILLUMINA": Grupo de leitura. Isso adiciona metadados ao BAM. Ferramentas como o GATK exigem isso.
+#../../reference/acrocomia_ref_renamed.fasta: Seu genoma renomeado e indexado. Lembre-se de que todos os arquivos da indexação devem estar juntos. 
+#../trimmed/Acrocomia_pop1_.fastq: As leituras limpas e sem adaptadores. 
+#> Acro_01.sam: O símbolo de "maior que" redireciona a saída do programa. Salva o alinhamento no formato SAM.
+# -----------------------------------------
+```
+
+Use o less para se mover dentro do arquivo SAM.
+❓Como está o arquivo? O que significa da parte dele? 
 
 
 
