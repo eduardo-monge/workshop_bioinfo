@@ -83,13 +83,26 @@ Lembre-se de que os arquivos são arquivos FASTQ, que são arquivos FASTA modifi
 Antes de gerar os arquivos de qualidade, vamos usar comandos básicos do UNIX para explorar os dados e nos familiarizar com o formato FASTQ.
 
 A. Primeiro use o os comandos `cat`/`head` para inspecionar um arquivo fastq.
-❓ Quais são os caracteres iniciais do cabeçalho para todas as leituras?
+❓Quais são os caracteres iniciais do cabeçalho para todas as leituras?
 
 ```bash
-zcat drive/MyDrive/Curso_PopGen_Genotropics/raw_fastq/SRR957824_500K_R1.fastq.gz | head
+zcat ../demultiplex/Acrocomia_pop1_01.fastq | head
 
+# -----------------------------------------
+#O símbolo de | é o "Pipe".
+#Ele instrui o terminal a pegar o resultado (a saída) do comando que está à sua esquerda e "injetá-lo" diretamente como entrada para o comando que está à sua direita, sem precisar salvar um arquivo temporário no meio do caminho. Isso permite realizar mais de uma operação ao mesmo tempo. 
+# -----------------------------------------
 
 ```
+B. Agora vamos usar o comando `grep` para procurar palavras ou expressões específicas dentro do nosso arquivo.
+❓Quantas leituras temos para cada indivíduo?
 
+```bash
+grep -c "^@SR" ../demultiplex/Acrocomia_pop1_01.fastq
+
+# -----------------------------------------
+#O `-c` significa `count` (contar) e o `^` significa 'no início da linha'
+# -----------------------------------------
+```
 
 ## 3. Limpeza de Dados (Trimming)
