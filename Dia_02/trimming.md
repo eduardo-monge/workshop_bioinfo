@@ -94,7 +94,18 @@ zcat ../demultiplex/Acrocomia_pop1_01.fastq | head
 # -----------------------------------------
 
 ```
-B. Agora vamos usar o comando `grep` para procurar palavras ou expressões específicas dentro do nosso arquivo.
+B. Assim como o `head` lê o topo, o `tail` lê o final do arquivo. As últimas sequências sequenciadas em uma corrida costumam ter qualidade pior.
+
+```bash
+tail  ../demultiplex/Acrocomia_pop1_01.fastq
+tail -n 15 ../demultiplex/Acrocomia_pop1_01.fastq
+
+# -----------------------------------------
+#Tanto head quanto tail retornam 10 linhas. Mas é possível usar o -n para indicar o número de linhas que desejo avaliar.
+# -----------------------------------------
+```
+
+C. Agora vamos usar o comando `grep` para procurar palavras ou expressões específicas dentro do nosso arquivo.
 ❓Quantas leituras temos para cada indivíduo?
 
 ```bash
@@ -105,4 +116,196 @@ grep -c "^@SR" ../demultiplex/Acrocomia_pop1_01.fastq
 # -----------------------------------------
 ```
 
+### 1. Avaliando a qualidade dos dados com o FastQC
+O [FastQC](https://github.com/s-andrews/FastQC?tab=readme-ov-file) é uma ferramenta amplamente utilizada para avaliar a qualidade dos dados de sequenciamento. Ele gera um relatório HTML detalhado que inclui métricas como:
+
+1. **Qualidade por base:** pontuações médias de qualidade ao longo do comprimento das leituras.
+2. **Conteúdo GC:** A porcentagem de bases G e C.
+3. **Níveis de duplicatas:** Identifica possíveis duplicatas de PCR.
+4. **Conteúdo do adaptador:** Verifica se há adaptadores de sequenciamento residuais.
+
+```bash
+# Ir para a pasta de resultados de QC
+cd ~/workshop_bioinfo/results/qc
+mkdir -p raw_qc
+cd raw_qc
+
+# Rodar o FastQC para todos os arquivos FASTQ demultiplexados (*.fastq)
+fastqc -t 4 ../../data/demultiplex/*.fastq -o .
+
+# -----------------------------------------
+#Os parâmetros importantes a serem considerados:
+# *.fastq o símbolo de asterísco (*) diz ao Linux para selecionar *todos* os arquivos que terminam com `.fastq` dentro daquela pasta. 
+# -o é a pasta de saída dos relatórios HTML. O ponto (.) um atalho que significa "esta pasta atual". Portanto, os resultados serão salvos exatamente onde você está agora no terminal.
+# -t 4 são os threads. Indica o número de núcleos do processador serem utilizados simultaneamente. 
+# -----------------------------------------
+
+```
+Abra o arquivo HTML no navegador para examinar as métricas de qualidade.
+
+❓Avalie a qualidade dos arquivos fastq. Qual é o comprimento médio dos reads 1? Qual é a qualidade dos dados? Há alguma queda na qualidade ao longo da sequência? Qual arquivo tem melhor e pior qualidade? Há alguma sequência de adaptador detectada?
+
+
+### 2. Gerando um único relatório de todas as leituras com o MultiQC
+O FastQC é uma ferramenta muito útil e poderosa. Uma limitação é que ele gera um relatório para cada leitura. Quando temos muitas leituras e muitos indivíduos (como geralmente acontece), pode ser difícil abrir e estudar cada relatório individualmente. Para criar um único relatório consensual que seja mais fácil de avaliar, podemos usar o [MultiQC](https://github.com/MultiQC/MultiQC).
+
+O uso é muito simples, basta estar dentro da pasta onde estão todos os arquivos HTML.
+
+```bash
+# O ponto (.) indica para o MultiQC procurar na pasta atual
+multiqc .
+```
+Agora abra o relatório final no navegador e vamos avaliar todas as amostras juntas. 
+
+❓Que características da biblioteca GBS poderiam ter causado esses resultados? 
+
+
 ## 3. Limpeza de Dados (Trimming)
+Como vimos nos relatórios, temos algumas leituras de baixa qualidade, bem como a presença de adaptadores Illumina e cola poli-G. Para eliminar essas partes, vamos usar duas ferramentas diferentes muito utilizadas na bioinformática. 
+
+### A. Corte e filtragem com Fastp
+O [Fastp](https://github.com/OpenGene/fastp) é uma ferramenta eficiente para controle de qualidade e pré-processamento. Ele pode:
+1. Cortar bases de baixa qualidade.
+2. Remover adaptadores.
+3. Filtrar reads curtas.
+4. Gerar relatórios de controle de qualidade.
+
+O `fastp` faz tudo de uma vez: onsegue detectar automaticamente os adaptadores Illumina, as caudas poli-X, corta adaptadores, filtra qualidade e já gera um relatório visual. 
+
+```bash
+# Ir para a pasta de trimming
+cd ~/workshop_bioinfo/data/trimmed
+
+# Rodar fastp para um para uma amostra
+fastp -i ../demultiplex/amostra01.fastq -I \
+      -o amostra01_fastp.fastq \
+      -q 20 \
+      --trim_poly_g \
+      -h relatorio_fastp.html
+
+# -----------------------------------------
+#Os parâmetros importantes que estamos usando: 
+# -i: nome do input
+# -o: nome do output
+# --trim_poly_g: elimina a cauda polyG
+# -q ou --qualified_quality_phred: o valor de qualidade que uma base é qualificada.
+# --html: nome do report final no formato html
+# -----------------------------------------
+```
+❓Verifique o relatório HTML gerado pelo Fastp e responda às seguintes perguntas: Qual foi o número de reads antes e depois da filtragem? Qual foi a porcentagem de adaptadores detectados e filtrados? Qual foi a porcentagem de reads com baixa qualidade, reads contendo muitas bases N e reads muito curtas?
+
+🤖 Automatizando o Processo: Rodando o Fastp em todas as amostras
+
+Na vida real, você terá dezenas ou centenas de amostras. Rodar o comando manualmente para cada uma seria impossível. Para resolver isso, usaremos um **Loop `for`** do Bash. Esse comando vai percorrer todos os arquivos da pasta e aplicar o `fastp` em cada um deles automaticamente.
+
+```bash
+# 1. Certifique-se de que está na pasta correta
+cd ~/workshop_bioinfo/data/demultiplex
+
+# 2. Criar a pasta de saída para os arquivos limpos
+mkdir -p ../trimmed_fastp
+
+# 3. Rodar o Loop para arquivos Single-End
+for file in *.fastq; do
+    # Criar um nome para o arquivo de saída adicionando '_fastp'
+    OUTNAME=$(basename $file .fastq)_fastp.fastq
+    
+    echo "Processando a amostra: $file"
+
+    fastp -i $file \
+          -o ../trimmed/$OUTNAME \
+          -q 20 \
+          --trim_poly_g \
+          -h ../trimmed/$(basename $file .fastq)_report.html
+done
+
+
+# -----------------------------------------
+#Os parâmetros importantes que estamos usando: 
+# for file in *.fastq; do: Diz ao Linux: "Para cada arquivo que termina com .fastq, guarde o nome dele temporariamente na variável chamada file e comece o processo".
+# basename $file .fastq: Esse comando é um truque para pegar apenas o nome da amostra e remover a extensão .fastq. Isso nos permite criar nomes de saída organizados.
+# $file: O cifrão indica que estamos chamando o conteúdo da variável (o nome do arquivo atual).
+# done: Avisa ao Linux que o comando acabou para aquela amostra e que ele pode passar para a próxima da lista.
+# -----------------------------------------
+```
+Após rodar o loop do `fastp`, você terá um novo arquivo `.fastq` para cada amostra dentro da pasta `trimmed`. Agora, precisamos confirmar se a limpeza foi eficiente. Para isso, geraremos novos relatórios **FastQC** e **MultiQC** para comparar com os dados brutos.
+1. Crie uma nova pasta chamada `trimmed_fastp` dentro do seu diretório de resultados de QC. Isso é importante para não misturar os relatórios dos dados brutos com os relatórios dos dados limpos. (Dica: Use o comando `mkdir`).
+2. Execute o **FastQC** apenas nos arquivos que estão dentro da pasta `trimmed`. Lembre-se de usar o parâmetro para salvar os resultados dentro da pasta que você criou no Passo 1. (Dica: Use o caractere curinga `*` para selecionar todos os arquivos de uma vez e o parâmetro `-o` para a saída).
+3. Entre na pasta `trimmed_fastp` e execute o **MultiQC** para agrupar todos os novos relatórios em um único arquivo interativo. (Dica: O comando é executado dentro da pasta onde os arquivos do FastQC foram gerados).
+
+❓ O que devemos observar agora?
+Ao abrir o novo arquivo multiqc_report.html, verifique os seguintes pontos:
+1. **Qualidade por Base:** Os "bigodes" dos gráficos de qualidade devem estar agora predominantemente na zona verde.
+2. **Presença de Adaptadores:** O gráfico de Adapter Content deve estar completamente limpo (linha plana em 0%).
+3. **Comprimento das Sequências:** Se você usou filtros de tamanho, verá uma variação no comprimento das reads (elas não terão mais todas o mesmo tamanho exato).
+4. **Caudas de Poli-G:** Se as amostras tinham esse problema, o conteúdo de Guanina (G) no final das leituras deve ter caído drasticamente.
+
+### B. Corte e filtragem com TrimGalore (Alternativa)
+O `fastp` é uma das ferramentas mais utilizadas hoje por ser muito rápida, mas não é a única. Às vezes, dependendo do conjunto de dados, ele pode não resolver nosso problema ou remover coisas demais. Outra ferramenta clássica e muito respeitada na comunidade é o [Trim Galore](https://github.com/FelixKrueger/TrimGalore/blob/master/Docs/Trim_Galore_User_Guide.md). Ele funciona como um "facilitador" (wrapper) que roda dois programas famosos ao mesmo tempo: o `cutadapt` (para limpar) e o `fastqc` (para gerar o relatório logo em seguida).
+
+A. Criar as pastas novas
+Como vamos testar um programa novo, não queremos misturar os resultados do Trim Galore com os do fastp. Vamos criar uma pasta só para ele.
+
+```bash
+# Vá para a pasta onde estamos guardando os dados limpos
+cd ~/workshop_bioinfo/data/trimmed
+
+# Crie uma nova pasta específica para o Trim Galore
+mkdir -p trimmed_trimgalore
+```
+B. Rodando para UMA amostra (Single-End)
+Vamos testar o comando em uma única amostra primeiro para entender os parâmetros. Como nossas sequências são Single-End (uma única leitura por fragmento), o comando é bem simples:
+
+```bash
+# Volte para a pasta com os arquivos demultiplexados
+cd ~/workshop_bioinfo/data/processed/demultiplex
+
+# Rodar o Trim Galore em apenas um arquivo
+trim_galore \
+    --quality 20 \
+    --nextseq 20 \
+    --illumina \
+    --length 20 \
+    --fastqc \
+    --output_dir ../trimmed/trimmed_trimgalore \
+    amostra01_R1.fastq
+
+# -----------------------------------------
+#Os parâmetros importantes que estamos usando: 
+--quality 20: Corta as extremidades da leitura quando a qualidade Phred < 20.
+--nextseq 20: Identifica e elimina  poly-G.
+--illumina: Indica o uso de adaptadores padrão da Illumina.
+--length 20: Elimina leituras que ficam muito curtas após o corte.
+--fastqc: Executa automaticamente o FastQC após o corte.
+--output_dir: Diretório onde os arquivos são salvos.
+# -----------------------------------------
+```
+Verifique o relatório gerado automaticamente pelo programa. 
+❓Como esse relatório se compara aos resultados do fasp para a mesma amostra? 
+
+C. Automatizando com um Loop (Para todas as amostras)
+Agora vamos usar o mesmo poder da automação que aprendemos antes para processar todos os arquivos FASTQ da pasta de uma só vez.
+
+```bash
+# Certifique-se de que está na pasta demultiplex
+cd ~/workshop_bioinfo/data/processed/demultiplex
+
+# Rodar Trim Galore para todos os arquivos single-end
+for file in *.fastq; do
+    echo "Limpando a amostra com Trim Galore: $file"
+    trim_galore \
+        --quality 20 \
+        --nextseq 20 \
+        --illumina \
+        --length 20 \
+        --fastqc \
+        --output_dir ../trimmed/trimmed_trimgalore \
+        "$file"
+
+done
+```
+💡 Nota Prática: O Trim Galore já adiciona automaticamente o sufixo _trimmed.fq no final do nome do arquivo, então não precisamos daquele truque do basename que usamos no fastp. Ele faz a organização dos nomes sozinho!
+
+Agora, basta executar o MultiQC para obter um resumo de tudo o que foi feito pelo TrimGalore.
+❓Como os resultados do fasp se comparam aos do multiQC? Há grandes mudanças?
+
