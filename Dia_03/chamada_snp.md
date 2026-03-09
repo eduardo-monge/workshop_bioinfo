@@ -134,10 +134,9 @@ gatk GenotypeGVCFs \
 ❓Vamos fazer um less neste arquivo. Como ele fica? Que variantes você consegue ver? 
 
 
-O arquivo gerado ao final deste processo '(acrocomia_populacao_bruta.vcf.gz)' é categorizado como "bruto" (unfiltered). Ele contém todos os candidatos a polimorfismos. A próxima e mandatória etapa analítica é a filtragem criteriosa (Hard Filtering).
+O arquivo gerado ao final deste processo `(acrocomia_populacao_bruta.vcf.gz)` é categorizado como "bruto" (unfiltered). Ele contém todos os candidatos a polimorfismos. A próxima e mandatória etapa analítica é a filtragem criteriosa (Hard Filtering).
 
 Como estamos interessados apenas em SNPs, o primeiro passo é selecionar apenas essas marcas. 
-
 ```bash
 gatk SelectVariants \
 -R reference.fasta \
@@ -145,11 +144,14 @@ gatk SelectVariants \
 --select-type SNP \
 -O raw_snps.vcf.gz
 ```
-
-
-
  
-### A. Filtragem de SNPs
+### C. Filtragem de SNPs
+Como podem ver, o arquivo final é chamado `raw_snps.vcf.gz`. Isso porque é um arquivo final sem filtros de qualidade nem nada. O GATK tem a função `VariantFiltration` que permite fazer esses filtros. 
+
+No entanto, existem outras duas ferramentas mais comuns e utilizadas para realizar esta etapa: `bcftools` e `VCFtools`. Iremos utilizá-las na próxima prática para realizar os filtros no nosso VCF e deixar o arquivo final pronto para as nossas análises. 
 
 
-## 2. Chamada sem genoma de referência (_de novo_)
+## 2. Chamada com genoma de referência (Alternativa)
+
+
+## 3. Chamada sem genoma de referência (_de novo_)
