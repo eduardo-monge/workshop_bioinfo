@@ -117,7 +117,33 @@ gatk GenomicsDBImport \
     --genomicsdb-workspace-path banco_dados_acrocomia \
     -L intervalos_acrocomia.list
 
+# -----------------------------------------
+# sample-name-map: é o nome de saída da biblioteca que estamos construíndo
+#-L: Também pode ser usado para um único cromossomo. Substituímos a lista pelo nome da região de interesse. 
+# -----------------------------------------
+```
 
+Com o `genomicsDB` criado, estamos finalmente prontos para identificar variantes e gerar um `vcf`.
+```bash
+# Realizar a chamada de variantes lendo diretamente do banco de dados recém-criado
+gatk GenotypeGVCFs \
+    -R ~/workshop_bioinfo/data/reference/acrocomia_ref.fasta \
+    -V gendb://banco_dados_acrocomia \
+    -O ../acrocomia_populacao_bruta.vcf.gz
+```
+❓Vamos fazer um less neste arquivo. Como ele fica? Que variantes você consegue ver? 
+
+
+O arquivo gerado ao final deste processo '(acrocomia_populacao_bruta.vcf.gz)' é categorizado como "bruto" (unfiltered). Ele contém todos os candidatos a polimorfismos. A próxima e mandatória etapa analítica é a filtragem criteriosa (Hard Filtering).
+
+Como estamos interessados apenas em SNPs, o primeiro passo é selecionar apenas essas marcas. 
+
+```bash
+gatk SelectVariants \
+-R reference.fasta \
+-V acrocomia_populacao_bruta.vcf.gz \
+--select-type SNP \
+-O raw_snps.vcf.gz
 ```
 
 
