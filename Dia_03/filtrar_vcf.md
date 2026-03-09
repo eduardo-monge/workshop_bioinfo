@@ -32,6 +32,7 @@ Para manipular os arquivos VCF existem duas ferramentas muito utilizadas:
 ## 1. Filtrando com bcftools
 O nosso objetivo é filtrar os VCF gerados com GATK e FreeBayes para reter apenas SNPs:
 + bialélicos
++ alta qualidade
 + MAF ≥ 0.05
 + presentes em ≥60% das amostras
 + remover SNPs com >50% de missing data
@@ -62,6 +63,19 @@ O que o script faz
 # -o filtered_snps.vcf.gz:  arquivo de saída
 # -----------------------------------------
 ```
+
+
+Agora que temos apenas os SNPs que nos interessam e que passaram pelos filtros de características dos SNPs, vamos filtrar por qualidade.  Para isso, utilizaremos o comando `bcftools filter`, aplicando uma expressão lógica combinada que exige simultaneamente uma alta probabilidade de acerto do sequenciador e um mínimo de leituras (reads) ancoradas naquela posição.
+
+```bash
+# Filtrar variantes mantendo apenas aquelas com Qualidade > 20 e Profundidade Total > 5
+
+bcftools filter \
+    -i 'QUAL>30 && DP>5' \
+    -O z \
+    -o acrocomia_snps_filer.vcf.gz \
+    snp_boa_qualidade.vcf.gz
+
 Em seguida, é necessário fazer a indexação do vcf gerado.
 
 ```bash
@@ -78,14 +92,80 @@ echo "SNPs no VCF original:"
 bcftools view -H raw_variants.vcf.gz | wc -l
 
 echo "SNPs após filtragem:"
-bcftools view -H filtered_snps.vcf.gz | wc -l
+bcftools view -H snp_boa_qualidade.vcf.gz | wc -l
 ```
+
+❓ Quantos SNPs havia antes e depois? Como podemos alterar esse número? 
 
 
 ## 2. Filtrando com vcftool
+Até o momento, filtramos nossa matriz focando na qualidade das mutações (os *loci*). Como vimos, dependendo de como a biblioteca foi construída e da tecnologia de sequenciamento, é comum que algumas amostras de DNA rendam bibliotecas de baixa qualidade, resultando em indivíduos com poucas leituras (baixa profundidade) e muitos dados faltantes.
+
+Manter indivíduos ruins na análise pode distorcer severamente os cálculos de estrutura populacional e diversidade genética. Utilizaremos o **VCFtools** para gerar um diagnóstico clínico da coorte e removeremos qualquer indivíduo que apresente mais de 30% de dados faltantes.
+
+### A Diagnóstico de Profundidade e Missing Data
+Primeiro, vamos calcule as estatísticas de qualidade para cada indivíduo da nossa população.
+
+```bash
+# 1. Calcular a proporção de dados faltantes por indivíduo (Missing Data)
+vcftools --gzvcf snp_boa_qualidade.vcf.gz --missing-indv --out stats_missing
+
+# 2. Calcular a profundidade média de sequenciamento por indivíduo (Depth)
+vcftools --gzvcf snp_boa_qualidade.vcf.gz --depth --out stats_depth
+```
+
+Estes comandos não alteram o VCF. Eles geram arquivos de relatório em texto simples (`stats_acrocomia.imiss` e `stats_acrocomia.idepth`), que contêm as métricas exatas de cada planta sequenciada.
+
+❓ Qual é a cobertura média das amostras? Temos alguma amostra com muitos dados ausentes? 
 
 
+### Remover os indivíduos com muitos dados faltantes
+Primeiro, precisamos gerar um arquivo .txt com a lista das pessoas que queremos excluir. 
+
+```bash
+# Ler o arquivo .imiss e extrair o nome (coluna 1) das amostras com mais de 30% de falha (coluna 5 > 0.3)
+# O comando 'NR>1' ignora o cabeçalho da tabela
+awk 'NR>1 && $5 > 0.3 {print $1}' stats_acrocomia.imiss > amostras_para_remover.txt
+
+# Conferir quantas e quais amostras reprovaram no controle de qualidade
+echo "Amostras com >30% de missing data:"
+cat amostras_para_remover.txt
+```
+
+Com a nossa lista de indivíduos de baixa qualidade gerada (`amostras_para_remover.txt`), instruímos o VCFtools a ler o nosso VCF, deletar inteiramente essas amostras e recalcular as frequências.
+
+```bash
+# Remover os indivíduos problemáticos e gerar o VCF final limpo
+vcftools \
+    --gzvcf snp_boa_qualidade.vcf.gz \
+    --remove amostras_para_remover.txt \
+    --recode --recode-INFO-all \
+    --out final_filtered_snps
+
+#Verificar número final de SNPs
+grep -vc "^#" final_filtered_snps.recode.vcf
+```
+
+❓O número final do SNPS mudou?
 
 
+## 3. Estadísticas finais
+Depois de aplicar todos os filtros (bialélicos, MAF, missing data, etc.), é importante verificar se o dataset final está consistente.
+
+```bash
+# 1. Gerar as estatísticas compreensivas do VCF final lapidado
+bcftools stats final_filtered_snps.recode.vcf > estatisticas_finais_acrocomia.txt
+
+# 2. Visualizar o sumário de números básicos (Summary Numbers)
+grep "^SN" estatisticas_finais_acrocomia.txt
+```
+
+
+## 3. Filtrando os outros arquivos. 
+
+Geramos três VCF diferentes, usando programas diferentes. Agora filtramos apenas um deles. Agora, usando os mesmos parâmetros e filtros, filtre os gerados pelo Freebayes e STACK. 
+
+
+❓Que diferenças você encontra entre os três VCF finais? 
 
 
