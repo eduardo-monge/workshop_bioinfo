@@ -75,9 +75,9 @@ bcftools filter \
     -O z \
     -o acrocomia_snps_filer.vcf.gz \
     snp_boa_qualidade.vcf.gz
+```
 
 Em seguida, é necessário fazer a indexação do vcf gerado.
-
 ```bash
 bcftools index filtered_snps.vcf.gz
 ```
