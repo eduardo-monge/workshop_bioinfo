@@ -33,8 +33,97 @@ Entre as ferramentas mais utilizadas, destacam-se:
 
 Como nosso foco são principalmente espécies vegetais comerciais, a maioria das quais já possui um genoma de referência de qualidade, aprenderemos a usar o GATK como ferramenta principal. 
 
-### Programas para chamada de SNPs
+### A. Pré-processamento antes de chamar SNPs
+O GATK é extremamente exigente quanto aos metadados da referência. Antes de executá-lo, precisamos gerar um dicionário de sequências `(.dict)` e um índice FASTA `(.fai)`. 
 
+```bash
+# 1. Navegar até a pasta da referência
+cd ~/workshop_bioinfo/data/reference
+
+# 2. Criar o índice FASTA com Samtools
+samtools faidx acrocomia_ref.fasta
+
+# 3. Criar o Dicionário de Sequências com Picard
+picard CreateSequenceDictionary \
+    R=acrocomia_ref.fasta \
+    O=acrocomia_ref.dict
+```
+
+💡*Opcional, mas recomendado*
+
+Recalibra os arquivos bam em relação a um “conjunto verdadeiro” de SNPs
+
+Os vcfs do conjunto verdadeiro são variantes nas quais temos alta confiança e tendem a ser gerados a partir de bibliotecas de alta cobertura sem PCR. Se tiver dispon[ivel, é recomendado fazer a recalibração. Na maioria das plantas não modelo, não temos esse tipo de dados, portanto, vamos pular essa etapa. 
+
+### C. Chamada de variantes
+A chamada de variantes não é um passo simples, pois o GATK faz a chamada de variantes por indivíduo. Posteriormente, é necessário consolidar em um único arquivo e chamar as variantes comuns entre todos os indivíduos. 
+
+O primeiro passo é chamar as variantes para cada indivíduo. Nesta etapa, o GATK analisará cada arquivo .dedup.bam e gerará um arquivo .g.vcf.gz. O sufixo .g indica que o arquivo contém informações de confiança para todas as bases do genoma, não apenas para os polimorfismos. É um arquivo intermediário que precisamos usar antes de criar nosso arquivo VCF final.
+
+```bash
+# Criar diretório para os gVCFs
+mkdir -p ~/workshop_bioinfo/results/gatk_gvcfs
+cd ~/workshop_bioinfo/data/alignment
+
+# Loop para processar todas as amostras de Acrocomia simultaneamente
+for bam in *.dedup.bam; do
+    SAMPLE=$(basename $bam .dedup.bam)
+    echo "Gerando gVCF para a amostra: $SAMPLE"
+
+    gatk HaplotypeCaller \
+        -R ../../reference/acrocomia_ref.fasta \
+        -I $bam \
+        -O ../../../results/gatk_gvcfs/${SAMPLE}.g.vcf.gz \
+        -native-pair-hmm-threads 4 \ 
+        -ERC GVCF
+done
+Esta é a parte mais demorada de todo o processo. É hora de tomar um café ☕. 
+```
+💡 Verifique seu arquivo `gvcf` para garantir que ele tenha um arquivo de índice `.idx`. Se o `haplotypecaller` travar, ele produzirá um arquivo `gvcf` truncado que acabará travando a etapa `genotypegvcf`. 
+
+O próximo passo é importar nossos arquivos `gvcf` para um arquivo `genomicsDB`. E uma representação compactada em banco de dados de todos os dados lidos em nossas amostras. O arquivo `GenomicsDB` contém todas as informações dos seus arquivos `GVCF`, mas não pode ser adicionado e não pode ser transformado de volta em um `gvcf`. Isso significa que, se você obtiver mais amostras, não poderá simplesmente adicioná-las ao seu arquivo `genomicdDB`, terá que voltar aos arquivos `gvcf`. 
+
+💡 A ferrameta `GenomicsDBImport` substituiu o antigo `CombineGVCFs` porque utiliza um banco de dados estruturado, sendo infinitamente mais rápido e escalável para genomas grandes e populações numerosas. A grande particularidade computacional do `GenomicsDBImport` é que ele exige a definição de intervalos (cromossomos ou scaffolds) para particionar o trabalho, e utiliza um arquivo de mapeamento de amostras (Sample Map). Primeiro, devemos gerar estes dois arquivos
+
+O algoritmo exige um arquivo tabular indicando o nome biológico da amostra e o caminho físico do seu respectivo gVCF (Sample Map).
+
+```bash
+# Navegar até o diretório dos gVCFs
+cd ~/workshop_bioinfo/results/gatk_gvcfs
+
+# Gerar o Sample Map automaticamente com um loop
+for gvcf in *.g.vcf.gz; do
+    SAMPLE=$(basename $gvcf .g.vcf.gz)
+    # O comando 'echo -e' com '\t' insere uma tabulação (TAB) entre o nome e o arquivo
+    echo -e "${SAMPLE}\t${gvcf}" >> sample_map.txt
+done
+```
+A segunda particularidade é a necessidade estrita de paralelização espacial: ele precisa saber exatamente em quais regiões (intervalos) do genoma da *Acrocomia* ele deve atuar. Como nosso genoma está nos cromossomos, podemos indicar uma lista com o nome dos cromossomos. Isso a partir do nome do índice `(.fai)`. 
+
+```bash
+# Extrair a primeira coluna (nomes das sequências) do arquivo .fai para criar a lista
+awk '{print $1}' ~/workshop_bioinfo/data/reference/acrocomia_ref.fasta.fai > intervalos_acrocomia.list
+
+# Visualizar os primeiros intervalos gerados
+head intervalos_acrocomia.list
+```
+
+Em seguida, chamamos `GenomicsDBImport` para criar o banco de dados
+
+```bash
+# Importar os dados para o GenomicsDB utilizando a lista de intervalos
+gatk GenomicsDBImport \
+    --sample-name-map sample_map.txt \
+    --genomicsdb-workspace-path banco_dados_acrocomia \
+    -L intervalos_acrocomia.list
+
+
+```
+
+
+
+ 
+### A. Filtragem de SNPs
 
 
 ## 2. Chamada sem genoma de referência (_de novo_)
