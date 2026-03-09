@@ -50,11 +50,39 @@ raw_variants.vcf.gz \
 -Oz \
 -o filtered_snps.vcf.gz
 
+# -----------------------------------------
+O que o script faz
+# bcftools view:
+# -v snps: mantém apenas SNPs
+# -m2 -M2: mantém apenas variantes bialélicas (min e max)
+# -q 0.05:minor: frequência mínima do alelo menor (MAF ≥ 0.05)
+# -i 'F_MISSING<=0.4': máximo de 40% de missing (≥60% presentes)
+# raw_variants.vcf.gz: arquivo de entrada
+# -Oz: saída comprimida em VCF.gz
+# -o filtered_snps.vcf.gz:  arquivo de saída
+# -----------------------------------------
+```
+Em seguida, é necessário fazer a indexação do vcf gerado.
 
+```bash
+bcftools index filtered_snps.vcf.gz
 ```
 
 
+Após aplicarmos os primeiros filtros temos que entender a taxa de retenção dos dados. Quantos polimorfismos tínhamos na população bruta e quantos sobreviveram depois da filtragem? 
 
+Podemos descobrir isso usando a mesma ferramenta `bcftools view`
+
+```bash
+echo "SNPs no VCF original:"
+bcftools view -H raw_variants.vcf.gz | wc -l
+
+echo "SNPs após filtragem:"
+bcftools view -H filtered_snps.vcf.gz | wc -l
+```
+
+
+## 2. Filtrando com vcftool
 
 
 
