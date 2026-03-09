@@ -55,7 +55,7 @@ Recalibra os arquivos bam em relação a um “conjunto verdadeiro” de SNPs
 
 Os vcfs do conjunto verdadeiro são variantes nas quais temos alta confiança e tendem a ser gerados a partir de bibliotecas de alta cobertura sem PCR. Se tiver dispon[ivel, é recomendado fazer a recalibração. Na maioria das plantas não modelo, não temos esse tipo de dados, portanto, vamos pular essa etapa. 
 
-### C. Chamada de variantes
+### B. Chamada de variantes
 A chamada de variantes não é um passo simples, pois o GATK faz a chamada de variantes por indivíduo. Posteriormente, é necessário consolidar em um único arquivo e chamar as variantes comuns entre todos os indivíduos. 
 
 O primeiro passo é chamar as variantes para cada indivíduo. Nesta etapa, o GATK analisará cada arquivo .dedup.bam e gerará um arquivo .g.vcf.gz. O sufixo .g indica que o arquivo contém informações de confiança para todas as bases do genoma, não apenas para os polimorfismos. É um arquivo intermediário que precisamos usar antes de criar nosso arquivo VCF final.
@@ -152,6 +152,165 @@ No entanto, existem outras duas ferramentas mais comuns e utilizadas para realiz
 
 
 ## 2. Chamada com genoma de referência (Alternativa)
+Como vimos nas seções anteriores, o GATK é uma ferramenta computacionalmente robusta e de altíssima precisão metodológica.
+
+Contudo, é fundamental ter em mente um viés histórico: o GATK foi originalmente desenvolvido e calibrado para analisar dados genômicos humanos. Consequentemente, seus algoritmos probabilísticos (como o *HaplotypeCaller* e o *VQSR*) pressupõem implicitamente a existência de um genoma de referência extremamente bem curado e dados de sequenciamento com a mesma qualidade. 
+
+Na botânica e melhoramento de plantas não sempre é possível. Para pesquisadores que trabalham com espécies de plantas nativas ou menos estudas, as condições ideais exigidas pelo GATK nem sempre podem ser atendidas.
+
+Diante desses desafios inerentes à genômica de espécies não-modelo, destacam-se alternativas de altíssima confiabilidade e flexibilidade na comunidade científica: o **FreeBayes**, **BCFtools** ou **STACK**. 
+
+
+### 0. Preparação da Lista de Amostras
+O FreeBayes opera de maneira otimizada lendo os dados de todos os indivíduos da sua coorte de uma só vez. Isso confere ao algoritmo um enorme poder estatístico: se uma mutação rara aparece com alta qualidade em um indivíduo da população, o programa usará essa evidência para refinar a busca da mesma mutação nos demais indivíduos, mesmo naqueles com menor cobertura de sequenciamento.
+
+Antes de poder rodar o algoritmo, ele exige um arquivo de texto simples listando o caminho de todos os arquivos BAM que serão analisados. Vamos gerar essa lista automaticamente.
+
+```bash
+# 1. Navegue para a pasta onde estão os BAMs processados e deduplicados
+cd ~/workshop_bioinfo/data/alignment
+
+# 2. Indexar os arquivos bam
+#Nós já fizemos isso, então não é necessário repetir. Mas é importante lembrar que, antes de tudo, precisamos ter os arquivos indexados para que os programas possam funcionar.
+
+for bam in *.bam; do
+    samtools index $bam
+done
+
+# 3. Crie uma lista contendo os nomes de todos os arquivos .dedup.bam
+ls *.dedup.bam > lista_amostras_acrocomia.txt
+
+# 4. Verifique se a lista foi criada corretamente
+cat lista_amostras_acrocomia.txt
+
+```
+
+Agora estamos prontos para rodar freebayes. Vemos que é muito mais fácil e simples do que o GATK. 
+
+```bash
+freebayes \
+-f ../../reference/acrocomia_ref.fasta \
+-L bamlist.txt \
+> ../../../results/freebayes_raw.vcf
+
+# -----------------------------------------
+Parâmetros utilizados: 
+# f: genoma de referência (indexado)
+#-L: lista de BAMs
+#--standard-filters
+#>: arquivo VCF de saída
+# -----------------------------------------
+```
+
+Agora vamos inspecionar o VCF bruto sem filtros. 
+
+```bash
+less -S ../../../results/freebayes/freebayes_raw.vcf
+#O parâmetro -S evita a quebra de linha, permitindo rolar a tela lateralmente com as setas do teclado. 
+```
+❓Como o resultado do GATK difere do FreeBayes?
+
 
 
 ## 3. Chamada sem genoma de referência (_de novo_)
+Até agora as ferramentas que exploramos (como GATK e FreeBayes) compartilham uma premissa metodológica fundamental: a dependência estrita de um genoma de referência. Esses algoritmos operam mapeando e comparando cada leitura de sequenciamento contra uma sequência genômica preestabelecida para, então, identificar os SNPs.Porém, na prática da biologia da conservação e da ecologia evolutiva, nem sempre temos o genoma disponível. 
+
+Para isso foram desenvolvidos algoritmos capazes de realizar a montagem e a chamada de variantes ***de novo*** (sem qualquer referência genômica prévia). Historicamente, a vasta maioria dessas ferramentas foi concebida para processar bibliotecas de Representação Reduzida do Genoma, como o GBS (*Genotyping-by-Sequencing*) e o RADseq. Existe uma clara tendência na genômica de transição das abordagens de GBS para o Sequenciamento de Genoma Completo (WGS - *Whole Genome Sequencing*), mas no conteto latino-americano, o GBS continua sendo uma realidade metodológica e econômica vital para a viabilização de estudos populacionais.
+
+Dentre os *pipelines* bioinformáticos mais conhecidos para a inferência *de novo* de variantes a partir de bibliotecas de representação reduzida, destacam-se:
+
+1. **[STACKS](https://catchenlab.life.illinois.edu/stacks/)**: Uma das ferramentas mais robustas e amplamente adotadas, baseada na construção de catálogos de *loci* consensuais a partir do agrupamento de sequências idênticas.
+2. **[ipyrad](https://ipyrad.readthedocs.io/en/master/index.html):** Uma evolução do antigo *PyRAD*, com excelente capacidade para lidar com InDels e otimizado para análises filogenéticas e de introgressão em dados RADseq.
+3. **[TASSEL](https://tassel.bitbucket.io):** Um software clássico, extensivamente utilizado no melhoramento genético de plantas (especialmente para milho e soja), com um *pipeline* muito consolidado para dados de GBS (o *TASSEL-GBS*).
+
+No nosso caso, vamos usar o `denovo_map.pl` [STACKS](https://catchenlab.life.illinois.edu/stacks/comp/denovo_map.php). Ele é uma ferramenta muito utilizada para estudos de genética populacional em espécies não modelo. Tem a vantagem de já incluir todas as etapas até o VCF final. 
+
+
+### 0. Visão geral do `denovo_map.pl`
+
+Quando executamos o `denovo_map.pl`, ele executa autonomamente os seguintes módulos, na exata ordem:
+1. **`ustacks` (Unique Stacks - Construção Intra-indivíduo):** O algoritmo processa os dados limpos de cada amostra separadamente. Ele agrupa sequências idênticas em pilhas (*stacks*) e, em seguida, funde pilhas com pequenas diferenças (possíveis alelos) para formar *loci* primários dentro de um único indivíduo.
+2. **`cstacks` (Catalog Stacks - O Genoma de Referência Virtual):** O programa seleciona os indivíduos representativos da população e mescla os seus *loci* primários. O produto desta etapa é um "Catálogo", que funcionará como um genoma de referência sintético para o restante da análise.
+3. **`sstacks` (Sets of Stacks - Ancoragem):** Cada *locus* identificado individualmente no passo 1 é agora alinhado contra o Catálogo  gerado no passo 2. Isso garante que o Locus 150 do Indivíduo A seja comparado exatamente com o Locus 150 do Indivíduo B.
+4. **`tsv2bam` e `gstacks` (Genotipagem e Faseamento):** Estes módulos reorganizam os dados alinhados, otimizam a chamada de variantes (SNP Calling) utilizando modelos probabilísticos avançados e realizam o faseamento de SNPs adjacentes no mesmo *locus*, construindo micro-haplótipos.
+5. **`populations` (Genética de Populações):** O módulo final. Ele lê o catálogo genotipado, aplica filtros populacionais (como frequência alélica e presença mínima nas populações) e calcula estatísticas-chave ($F_{ST}$, $\pi$, heterozigosidade). Por fim, ele exporta os dados no formato padrão VCF.
+
+<img width="1165" height="895" alt="stacks_pipeline" src="https://github.com/user-attachments/assets/cf71b50b-6c96-4ee2-943f-534b4f3c4075" />
+
+
+### 1. Criar os arquivos necessários para executar o programa
+Antes de executarmos o *pipeline* integral do STACKS, precisamos do o arquivo de metadados populacionais, comumente referido como *PopMap* (`popmap.txt`). A arquitetura do arquivo é estritamente tabular. Ele deve conter exatamente duas colunas, separadas **por uma tabulação (TAB)**:
+1. **ID da Amostra:** O nome exato do indivíduo (deve ser estritamente idêntico ao nome do arquivo `.fq` ou `.fastq.gz` correspondente, mas **sem** a extensão).
+2. **Identificador da População:** Uma *string* (texto sem espaços) indicando a origem ou agrupamento do indivíduo.
+
+Exemplo:
+```bash
+Acro_01    Cerrado
+Acro_02    Cerrado
+Acro_03    Cerrado
+Acro_04    Mata_Atlantica
+Acro_05    Mata_Atlantica
+```
+
+A metodologia mais eficiente e segura consiste em organizar seus metadados previamente em um software de planilhas (como Microsoft Excel ou Google Sheets). Ao copiar duas colunas de uma planilha e colá-las no terminal, o sistema operacional automaticamente insere o caractere de tabulação (TAB) entre elas.
+
+```bash
+# 1. Navegue até a pasta de dados onde o STACKS buscará as informações
+cd ~/workshop_bioinfo/data/
+
+# 2. Abra o editor de texto nativo do Linux (nano) criando um novo arquivo
+nano popmap.txt
+
+#Para salvar o arquivo no nano, pressione Ctrl+O, confirme o nome apertando Enter, e saia do editor pressionando Ctrl+X.
+```
+
+### 2. Executando o Pipeline `denovo_map.pl`
+A beleza do `denovo_map.pl` reside na sua capacidade de condensar toda essa complexidade em um único comando de terminal. Para executá-lo, precisaremos dos nossos arquivos FASTQ limpos e desmultiplexados, além dos arquivos gerados anteriormente. 
+
+```bash
+# 1. Criar o diretório para acomodar os resultados estruturados do STACKS
+mkdir -p ~/workshop_bioinfo/results/variants/stacks_denovo
+
+# 2. Executar o pipeline orquestrador De Novo
+denovo_map.pl -T 4 \
+              -M 3 \
+              -n 3 \
+              -o ~/workshop_bioinfo/results/variants/stacks_denovo \
+              --write-single-snp \
+              --min-samples-per-pop 0.7 \ 
+              --samples ~/workshop_bioinfo/data/processed/demultiplex \
+              --popmap ~/workshop_bioinfo/data/popmap.txt
+
+# -----------------------------------------
+Parâmetros utilizados: 
+# -T (Threads):Alocação de núcleos de processamento para paralelizar a análise.
+# -M: O número máximo de nucleotídeos divergentes permitidos entre duas sequências para que o programa as considere como sendo alelos do mesmo locus em um único indivíduo.
+# n: O número máximo de nucleotídeos divergentes permitidos ao fundir loci de indivíduos diferentes para a construção do catálogo.
+# -o: arquivo VCF de saída
+# --write-single-snp: Exporta apenas um SNP por locus, útil para evitar linkage em análises populacionais.
+# --min-samples-per-pop: Define proporção mínima de indivíduos por população para manter um locus. 0.7 significa 70% dos indivíduos da população.
+# --samples: a pasta onde os arquivos das amostras estão armazenados
+# --popmap: arquivo descritivo das subpopulações
+# -----------------------------------------
+```
+
+Dentro da pasta de saída você terá:
+1. `populations.snps.vcf`
+2. `populations.sumstats.tsv`
+3. `catalog.fa.gz`
+
+O arquivo principal para análises é:
+
+`populations.snps.vcf`
+
+Abra o arquivo usando o comando less
+
+❓Como o resultado do GATK difere do FreeBayes?
+
+
+💡 **Nota Metodológica:** 
+> Neste exercício prático, optamos por executar o *pipeline* orquestrador completo (`denovo_map.pl`). Como vimos, ele percorre autonomamente todas as etapas computacionais e nos entrega diretamente o arquivo de resultados finais. Esta é, sem dúvida, a abordagem mais ágil e direta.
+> 
+> No entanto, é  possível executar o STACKS passo a passo. Isso significa invocar manualmente no terminal cada um dos módulos isolados (`ustacks`, depois `cstacks`, `sstacks`, `gstacks` e, finalmente, `populations`). 
+> 
+> Esta abordagem modular, embora mais trabalhosa, confere ao pesquisador um controle absoluto sobre a análise, permitindo refinar, testar e calibrar os parâmetros matemáticos específicos de cada fase de forma independente para otimizar a descoberta de variantes na sua espécie de estudo.
