@@ -33,7 +33,18 @@ cd ~/workshop_bioinfo/data
 # Criar e abrir o arquivo com o editor nano
 nano barcodes.txt
 
-#Dentro do nano, você pode copiar e colar os códigos de barras e amostras de um arquivo Excel ou TXT do seu computador. Lembre-se de como fizemos no dia 1. 
+#Dentro do nano, você pode copiar e colar os códigos de barras e amostras de um arquivo Excel ou TXT do seu computador. Lembre-se de como fizemos no dia 1.
+
+TGACGCCA	AM_04
+CAGATA	AM_05
+CTCGCGG	G109
+AACTGG	G111
+ACGCGCG	luz_20m
+GTCGCCT	luz_25m
+GGACAG	rifania10
+ATCTGT	rifania8
+TCAGAGAT	veracruz-mex-L1p2
+CGTTCA	veracruz-mex-L3p2
 ```
 (Para salvar: pressione Ctrl + O e depois Enter. Para sair: Ctrl + X)
 
