@@ -42,15 +42,19 @@ ls -R
 # -----------------------------------------
 ```
 ## 2. Download de Dados de Sequenciamento (FASTQ)
-Vamos baixar um conjunto de dados reduzido (subset) para praticar os comandos de manipulação. Utilizaremos o comando wget.
+Vamos baixar um conjunto de dados reduzido (subset) para praticar os comandos de manipulação. Normalmente utilizamos o comando `wget` (ou `curl`) para realizar o download de conjuntos de dados e genomas de bancos públicos diretamente da internet para os nossos servidores. Ele é incrivelmente eficiente para links estáticos. 
+
+No entanto, quando nossos dados estão hospedados em ecossistemas de armazenamento em nuvem corporativos, como o Google Drive, o `wget` tradicional falha. Isso ocorre porque o Google não fornece um link direto simples para o arquivo bruto; a plataforma utiliza protocolos dinâmicos de segurança, exigindo a resolução de *cookies*, tokens de sessão e, frequentemente, confirmações manuais de antivírus que bloqueiam requisições simples de terminal.
+
+Como alternativa, utilizamos o comando **`gdown`**. O  [gdown](https://github.com/wkentaro/gdown) é um pacote de código aberto desenvolvido em Python, projetado especificamente para interagir com a API do Google Drive emulando o comportamento de um navegador web. Quando você fornece o link da pasta, o algoritmo do `gdown` "conversa" com os servidores do Google, intercepta automaticamente os *cookies* de confirmação de segurança em segundo plano e resolve os redirecionamentos de página. O resultado é a capacidade de espelhar o conteúdo exato da sua pasta do Drive diretamente para o diretório do seu servidor de alto desempenho, contornando os bloqueios de segurança sem a necessidade de configurações complexas.
+
 
 ```bash
 # Entrar na pasta de dados brutos
 cd data/raw
 
-# Baixar arquivos FASTQ de exemplo
-wget [https://raw.githubusercontent.com/josoga2/common-usage-files/master/sample_R1.fastq](https://raw.githubusercontent.com/josoga2/common-usage-files/master/sample_R1.fastq)
-wget [https://raw.githubusercontent.com/josoga2/common-usage-files/master/sample_R2.fastq](https://raw.githubusercontent.com/josoga2/common-usage-files/master/sample_R2.fastq)
+# Baixar arquivos FASTQ de exemplo desde Google Drive
+gdown --folder https://drive.google.com/drive/folders/1HMaZB53tq5jiQbg0tE2Alk8P0WF1Afmt?usp=drive_link
 
 # Listar os arquivos e verificar o tamanho (legível para humanos)
 ls -lh
