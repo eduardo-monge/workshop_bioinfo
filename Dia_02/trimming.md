@@ -202,8 +202,8 @@ O `fastp` faz tudo de uma vez: onsegue detectar automaticamente os adaptadores I
 cd ~/workshop_bioinfo/data/trimmed
 
 # Rodar fastp para um para uma amostra
-fastp -i ../demultiplex/amostra01.fastq -I \
-      -o amostra01_fastp.fastq \
+fastp -i ../demultiplex/AM_04.fq.gz \
+      -o  AM_04.fq.gz_trimmed.fq.gz \
       -q 20 \
       --trim_poly_g \
       -h relatorio_fastp.html
@@ -231,17 +231,17 @@ cd ~/workshop_bioinfo/data/demultiplex
 mkdir -p ../trimmed_fastp
 
 # 3. Rodar o Loop para arquivos Single-End
-for file in *.fastq; do
-    # Criar um nome para o arquivo de saída adicionando '_fastp'
-    OUTNAME=$(basename $file .fastq)_fastp.fastq
+for file in *.fq.gz; do
+    # Criar um nome para o arquivo de saída adicionando '_trimmed'
+    OUTNAME=$(basename $file .fq.gz)_trimmed
     
     echo "Processando a amostra: $file"
 
     fastp -i $file \
-          -o ../trimmed/$OUTNAME \
+          -o ../trimmed/$OUTNAME.fq.gz \
           -q 20 \
           --trim_poly_g \
-          -h ../trimmed/$(basename $file .fastq)_report.html
+          -h ../trimmed/$(basename $file .fq.gz)_report.html
 done
 
 
