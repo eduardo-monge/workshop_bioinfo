@@ -68,13 +68,27 @@ cd data/demultiplex
 # -e: Enzima de restrição usada
 # -r, -c, -q: Limpar reads órfãos, corrigir barcodes e checar qualidade básica
 
-process_radtags -1 ../data/raw/sample_R1.fastq \
+process_radtags -f ../data/raw/mz_gbs_acrocomia.fastq.gz \
                 -b ../data/barcodes.txt \
                 -o . \
-                -e ecori \
+                --adapter-1 AGATCGGAAGAGCTCGTATGCCGTCTTCTGCTTG \
+                -e pstI \
+                --adapter-mm 2 \
                 -r \
                 -c \
                 -q
+
+# -----------------------------------------
+O que este código faz:
+# -f (File): Indica ao algoritmo que estamos inserindo um arquivo Single-End e aponta o caminho absoluto ou relativo para as leituras brutas comprimidas.
+# -b (Barcodes): Caminho para o arquivo de texto tabular contendo os identificadores (índices) para a separação dos indivíduos.
+# -o (Output): Diretório de saída onde os arquivos limpos e separados serão salvos (o . instrui o programa a salvar no diretório atual).
+# --adapter-1: Fornece a sequência exata do adaptador Illumina. O programa fará uma varredura rigorosa para encontrar e cortar (trim) essa sequência indesejada.
+# -e mseI (Enzyme): Informa a enzima de restrição utilizada na digestão do genoma durante a preparação da biblioteca GBS (neste estudo de caso, a MseI). O algoritmo verificará a integridade deste sítio de corte.
+# --adapter-mm 2: Permite até 2 mismatches (erros de pareamento) ao procurar a sequência do adaptador, tornando a limpeza mais rigorosa diante de possíveis erros de sequenciamento.
+# -r (Rescue): Ativa o algoritmo de resgate. Ele tenta recuperar barcodes e sítios de enzima que falharam na identificação primária devido a erros mínimos do sequenciador.
+# -c (Clean): Habilita o filtro de limpeza básica, descartando sumariamente leituras que possuam bases não identificadas (marcadas como N pelo sequenciador).
+# -q (Quality): Habilita o filtro avançado de qualidade. Descartará leituras cujo Phred score caia abaixo do limite mínimo aceitável em uma janela deslizante matemática.
 ```
 
 💡 **Single-end sequencing versus paired-end sequencing**
@@ -142,7 +156,7 @@ mkdir -p raw_qc
 cd raw_qc
 
 # Rodar o FastQC para todos os arquivos FASTQ demultiplexados (*.fastq)
-fastqc -t 4 ../../data/demultiplex/*.fastq -o .
+fastqc -t 4 ../../data/demultiplex/*.fastq.gz -o .
 
 # -----------------------------------------
 #Os parâmetros importantes a serem considerados:
