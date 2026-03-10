@@ -83,21 +83,41 @@ Arquivos de bioinformática costumam ser muito grandes. Aprender a "espiar" o co
 A. Anatomia do FASTQ (Comando head e tail)
 Cada read no formato FASTQ possui 4 linhas. Vamos ver o primeiro read do arquivo:
 ```bash
-head -n 4 sample_R1.fastq
+zcat AM_04.fq.gz | head -n 4
 ```
+❓ O que significa cada parte do cabeçalho? 
+
+<details>
+<summary>🧬 O Cabeçalho FASTQ</b> </summary>
+
+<br>
+
+Este cabeçalho é o identificador único para cada uma única molécula de DNA genômico. Ele contém as coordenadas físicas exatas de onde essa molécula foi processada no equipamento (geralmente uma plataforma Illumina):
+
+* **`@`**: O caractere obrigatório que indica o início de um bloco de sequência no formato FASTQ.
+* **`152`**: O Identificador do Sequenciador (*Instrument ID*) ou o número da corrida (*Run ID*). É o "nome" da máquina que realizou o sequenciamento.
+* **`1`**: O número da Pista (*Lane*). A lâmina de vidro do sequenciador (*Flowcell*) é dividida em canaletas (frequentemente 8). Esta amostra correu na canaleta 1.
+* **`1101`**: O "Azulejo" (*Tile*). Cada canaleta é subdividida em milhares de quadradinhos minúsculos chamados *tiles*, onde o DNA se fixa e é amplificado (formando os *clusters*).
+* **`29858`**: A coordenada espacial X (posição horizontal) exata do *cluster* de DNA dentro daquele azulejo específico.
+* **`1000`**: A coordenada espacial Y (posição vertical) exata do *cluster* dentro do azulejo.
+* **`/1`**: O tipo de leitura (*Read Type*). Em metodologias de sequenciamento modernas (*Paired-End*), lemos o fragmento de DNA pelas duas pontas. O `/1` indica que esta é a leitura *Forward* (Read 1). O arquivo parceiro dessa mesma amostra terá coordenadas idênticas, mas terminará com `/2` (a leitura *Reverse*).
+
+> 💡 **Nota Tecnológica:** O sequenciador necessita registrar meticulosamente as posições X e Y (`29858_1000`) de cada molécula pois ele "lê" o DNA capturando fotografias em altíssima resolução da lâmina a cada ciclo químico de adição de bases. Ele utiliza essas coordenadas matemáticas para garantir que o ponto fluorescente piscando naquela exata posição seja a mesma molécula de DNA em crescimento!
+
+</details>
 
 B. Contagem de Sequências
 Podemos usar o contador de linhas (wc -l) para estimar o número de reads.
 ```bash
 # Contar total de linhas
-wc -l sample_R1.fastq
+zcat AM_04.fq.gz | wc -l
 ```
 
 C. Busca com Grep
 O comando grep é poderoso para encontrar padrões. Vamos verificar os cabeçalhos das sequências.
 ```bash
 # Listar os primeiros 5 cabeçalhos (começam com @)
-grep "^@" sample_R1.fastq | head -n 5
+grep "^@" AM_04.fq.gz | head -n 5
 ```
 
 ## 4. Gestão de Metadados (Prática com Nano)
@@ -113,9 +133,16 @@ nano metadata.tsv
 Dentro do editor Nano, digite o seguinte (use a tecla TAB para separar as colunas):
 
 ```bash
-Sample_ID    Species    Location    Condition
-sample_01    Acrocomia  Guatemala   Control
-sample_02    Acrocomia  Guatemala   Tratamento
+TGACGCCA	AM_04
+CAGATA	AM_05
+CTCGCGG	G109
+AACTGG	G111
+ACGCGCG	luz_20m
+GTCGCCT	luz_25m
+GGACAG	rifania10
+ATCTGT	rifania8
+TCAGAGAT	veracruz-mex-L1p2
+CGTTCA	veracruz-mex-L3p2
 ```
 (Para salvar: Ctrl + O, depois Enter. Para sair: Ctrl + X)
 
