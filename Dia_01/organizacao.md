@@ -133,16 +133,16 @@ nano metadata.tsv
 Dentro do editor Nano, digite o seguinte (use a tecla TAB para separar as colunas):
 
 ```bash
-TGACGCCA	AM_04
-CAGATA	AM_05
-CTCGCGG	G109
-AACTGG	G111
-ACGCGCG	luz_20m
-GTCGCCT	luz_25m
-GGACAG	rifania10
-ATCTGT	rifania8
-TCAGAGAT	veracruz-mex-L1p2
-CGTTCA	veracruz-mex-L3p2
+AM_04	amazonas
+AM_05	amazonas
+G109	guatemala
+G111	guatemala
+rifania10	sao_paulo
+rifania8	sao_paulo
+luz_20m	minas
+luz_25m	minas
+veracruz-mex-L1p2	mexico
+veracruz-mex-L3p2	mexico
 ```
 (Para salvar: Ctrl + O, depois Enter. Para sair: Ctrl + X)
 
