@@ -117,7 +117,7 @@ sample_02    Acrocomia  Guatemala   Tratamento
 
 
 
-💡 **Dica de Sobrevivência: Usando o Excel a seu favor**
+💡 **Dica: Usando o Excel**
 > 
 > Trabalhar com editores de texto dentro do terminal, como o `nano`, pode ser um desafio no início, especialmente para quem ainda não está acostumados com ambientes de programação. Não se preocupe! 
 > 
