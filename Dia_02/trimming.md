@@ -68,8 +68,8 @@ cd data/demultiplex
 # -e: Enzima de restrição usada
 # -r, -c, -q: Limpar reads órfãos, corrigir barcodes e checar qualidade básica
 
-process_radtags -f ../data/raw/mz_gbs_acrocomia.fastq.gz \
-                -b ../data/barcodes.txt \
+process_radtags -f ../raw/mz_gbs_acrocomia.fastq.gz \
+                -b ../barcodes.txt \
                 -o . \
                 --adapter-1 AGATCGGAAGAGCTCGTATGCCGTCTTCTGCTTG \
                 -e pstI \
