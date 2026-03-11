@@ -151,12 +151,12 @@ O [FastQC](https://github.com/s-andrews/FastQC?tab=readme-ov-file) é uma ferram
 
 ```bash
 # Ir para a pasta de resultados de QC
-cd ~/workshop_bioinfo/results/qc
-mkdir -p raw_qc
-cd raw_qc
+cd ~/workshop_bioinfo
+mkdir -p results/qc/raw_qc
+cd results/qc/raw_qc
 
 # Rodar o FastQC para todos os arquivos FASTQ demultiplexados (*.fastq)
-fastqc -t 4 ../../data/demultiplex/*.fastq.gz -o .
+fastqc -t 4 ../../../data/demultiplex/*.fq.gz -o .
 
 # -----------------------------------------
 #Os parâmetros importantes a serem considerados:
@@ -198,14 +198,17 @@ O [Fastp](https://github.com/OpenGene/fastp) é uma ferramenta eficiente para co
 O `fastp` faz tudo de uma vez: onsegue detectar automaticamente os adaptadores Illumina, as caudas poli-X, corta adaptadores, filtra qualidade e já gera um relatório visual. 
 
 ```bash
-# Ir para a pasta de trimming
-cd ~/workshop_bioinfo/data/trimmed
+# Ir para a pasta de trimmed
+cd ~/workshop_bioinfo/data
+mkdir trimmed
+cd trimmed
 
 # Rodar fastp para um para uma amostra
 fastp -i ../demultiplex/AM_04.fq.gz \
       -o  AM_04.fq.gz_trimmed.fq.gz \
       -q 20 \
       --trim_poly_g \
+      --trim_poly_x \
       -h relatorio_fastp.html
 
 # -----------------------------------------
@@ -241,6 +244,7 @@ for file in *.fq.gz; do
           -o ../trimmed/$OUTNAME.fq.gz \
           -q 20 \
           --trim_poly_g \
+          --trim_poly_x \  
           -h ../trimmed/$(basename $file .fq.gz)_report.html
 done
 
