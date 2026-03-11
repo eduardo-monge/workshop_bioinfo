@@ -287,13 +287,12 @@ cd ~/workshop_bioinfo/data/processed/demultiplex
 
 # Rodar o Trim Galore em apenas um arquivo
 trim_galore \
-    --quality 20 \
     --nextseq 20 \
     --illumina \
     --length 20 \
     --fastqc \
-    --output_dir ../trimmed/trimmed_trimgalore \
-    amostra01_R1.fastq
+    --output_dir ../trimmed/trim_galore \
+    AM_04.fq.gz 
 
 # -----------------------------------------
 #Os parâmetros importantes que estamos usando: 
@@ -316,15 +315,14 @@ Agora vamos usar o mesmo poder da automação que aprendemos antes para processa
 cd ~/workshop_bioinfo/data/processed/demultiplex
 
 # Rodar Trim Galore para todos os arquivos single-end
-for file in *.fastq; do
+for file in *.fq.gz ; do
     echo "Limpando a amostra com Trim Galore: $file"
     trim_galore \
-        --quality 20 \
         --nextseq 20 \
         --illumina \
         --length 20 \
         --fastqc \
-        --output_dir ../trimmed/trimmed_trimgalore \
+        --output_dir ../trimmed/trim_galore \
         "$file"
 
 done
