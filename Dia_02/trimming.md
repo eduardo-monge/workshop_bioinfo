@@ -296,8 +296,7 @@ trim_galore \
 
 # -----------------------------------------
 #Os parâmetros importantes que estamos usando: 
---quality 20: Corta as extremidades da leitura quando a qualidade Phred < 20.
---nextseq 20: Identifica e elimina  poly-G.
+--nextseq 20: Identifica e elimina  poly-G e elimina reads com qualidade Q < 20
 --illumina: Indica o uso de adaptadores padrão da Illumina.
 --length 20: Elimina leituras que ficam muito curtas após o corte.
 --fastqc: Executa automaticamente o FastQC após o corte.
