@@ -170,17 +170,17 @@ O arquivo SAM é muito pesado e ocupa muito espaço no computador, por isso norm
 
 ```bash
 # Loop para alinear y convertir todas las muestras Single-End
-for file in ../trimmed/*_clean.fastq; do
+for file in ../trimmed/*_trimmed.fq.gz; do
     # Extraer solo el nombre de la muestra (ej: Acro_01)
-    SAMPLE=$(basename $file _clean.fastq)
+    SAMPLE=$(basename $file _trimmed.fq.gz)
     
     echo "Alineando y convirtiendo la muestra: $SAMPLE"
 
     bwa mem -t 4 \
         -R "@RG\tID:$SAMPLE\tSM:$SAMPLE\tPL:ILLUMINA" \
-        ../../reference/acrocomia_ref.fasta \
-        $file |\
- samtools view -b - > ${SAMPLE}_nofilers.bam
+        ../reference/acrocomia_chr1.fna.gz \
+        $file | \
+ samtools view -b -> ${SAMPLE}_nofilers.bam
 done
 ```
 
