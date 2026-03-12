@@ -27,7 +27,7 @@ Ahora vamos a fazer o download do genoma via FTP (File Transfer Protocol), compa
 # 2. Baixar o genoma da Macaúba (Acrocomia aculeata)
 wget -c https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/055/471/735/GCA_055471735.1_USP_Acracu_1.0/GCA_055471735.1_USP_Acracu_1.0_genomic.fna.gz
 
-gdown --folder [https://drive.google.com/drive/folders/1HMaZB53tq5jiQbg0tE2Alk8P0WF1Afmt?usp=drive_link]
+gdown --folder https://drive.google.com/drive/folders/1HMaZB53tq5jiQbg0tE2Alk8P0WF1Afmt?usp=drive_link
 
 # 3. Renomear para facilitar o uso (opcional, mas recomendado)
 mv GCA_055471735.1_ASM5547173v1_genomic.fna acrocomia_ref.fna.gz
