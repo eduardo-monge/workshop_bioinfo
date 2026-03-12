@@ -207,6 +207,17 @@ samtools sort -o Acro_01_filter.sorted.bam
 
 # Indexar o arquivo ordenado (Gera o índice posicional .bai)
 samtools index Acro_01.sorted.bam
+
+#Para todas as amostras
+for file in ./*_nofilers.bam ; do
+    # Extraer solo el nombre de la muestra (ej: Acro_01)
+    SAMPLE=$(basename $file _nofilers.bam)
+    
+    echo "Filtrando: $SAMPLE"
+
+    samtools view -F 4 -q 20 -b $file | \
+    samtools sort -o $SAMPLE.sorted.bam 
+done
 ```
 
 ### B. Mitigação de Vieses Técnicos: Duplicatas de PCR (Picard)
