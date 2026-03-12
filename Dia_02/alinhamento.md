@@ -369,38 +369,43 @@ Quando estamos começando com a análise de dados, é recomendável seguir o pro
 
 💡 Script "Tudo-em-Um"
 ```bash
-# 1. Indexar o genoma de referência (Isso é feito apenas UMA vez antes do loop)
-echo "Indexando o genoma de referência..."
-bwa index ../../reference/acrocomia_ref.fasta
+# 1. Indexar el genoma de referencia (solo una vez)
+echo "Indexando el genoma de referencia..."
+bwa index ../reference/acrocomia_chr1.fna.gz
 
-# 2. O Lloop de processamento
-for file in ../trimmed/*_trimmed.fastq; do
-    # Extrair o nome da amostra
-    SAMPLE=$(basename $file _clean.fastq)
-    echo "Iniciando processamento em cadeia da amostra: $SAMPLE"
 
-    # PASSO A: Alinhamento (BWA) + Conversão/Filtro (View) + Ordenação (Sort)
-    # Note os pipes (|) conectando os programas sem gerar arquivos intermediários pesados
-    bwa mem -t 4 -R "@RG\tID:$SAMPLE\tSM:$SAMPLE\tPL:ILLUMINA" \
-        ../../reference/acrocomia_ref.fasta $file | \
+# 2. Loop de procesamiento para todas las muestras
+for file in ../trimmed/*_trimmed.fq.gz; do
+
+    # Extraer nombre de muestra
+    SAMPLE=$(basename "$file" _trimmed.fq.gz)
+
+    echo "Procesando muestra: $SAMPLE"
+
+    # PASO A: Alineamiento + filtrado + ordenamiento
+    bwa mem -t 4 \
+        -R "@RG\tID:$SAMPLE\tSM:$SAMPLE\tPL:ILLUMINA" \
+        ../reference/acrocomia_chr1.fna.gz \
+        "$file" | \
     samtools view -F 4 -q 20 -b - | \
     samtools sort -o ${SAMPLE}.tmp.sorted.bam
 
-    # PASSO B: Remoção de Duplicatas (Picard)
+    # PASO B: Remoción de duplicados
     picard MarkDuplicates \
         I=${SAMPLE}.tmp.sorted.bam \
-        O=${SAMPLE}.final.bam \
+        O=${SAMPLE}.sorted.dedup.bam \
         M=${SAMPLE}_dup_metrics.txt \
         REMOVE_DUPLICATES=true \
         VALIDATION_STRINGENCY=SILENT
 
-    # PASSO C: Indexação do BAM Final
-    samtools index ${SAMPLE}.final.bam
+    # PASO C: Indexar BAM final
+    samtools index ${SAMPLE}.sorted.dedup.bam
 
-    # PASSO D: Limpeza inteligente (Apagar o arquivo temporário ordenado)
+    # PASO D: eliminar archivo temporal
     rm ${SAMPLE}.tmp.sorted.bam
-    
-    echo "Amostra $SAMPLE finalizada com sucesso!"
+
+    echo "Muestra $SAMPLE finalizada."
+
 done
 ```
 
