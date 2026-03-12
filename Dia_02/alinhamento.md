@@ -1,6 +1,13 @@
 # 💻 Prática Dia 2 (Tarde): Alinhamento e Mapeamento de Sequências
 Agora que temos nossos dados limpos e filtrados (seja pelo fastp ou Trim Galore), o próximo passo é o Mapeamento. Vamos comparar cada read da nossa amostra com o Genoma de Referência para descobrir de qual parte do cromossomo aquela sequência veio.
 
+## 0. Instalar CONDA
+
+```bash
+wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+bash Miniconda3-latest-Linux-x86_64.sh
+source ~/.bashrc
+```
 ---
 ## 1. Genoma de referência
 Antes de começar, precisamos conhecer nosso genoma de referência e poder indexá-lo. 
