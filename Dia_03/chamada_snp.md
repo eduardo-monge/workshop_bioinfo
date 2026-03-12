@@ -41,12 +41,14 @@ O GATK é extremamente exigente quanto aos metadados da referência. Antes de ex
 cd ~/workshop_bioinfo/data/reference
 
 # 2. Criar o índice FASTA com Samtools
-samtools faidx acrocomia_ref.fasta
+gunzip acrocomia_chr1.fna.gz
+samtools faidx acrocomia_chr1.fna
 
 # 3. Criar o Dicionário de Sequências com Picard
 picard CreateSequenceDictionary \
-    R=acrocomia_ref.fasta \
-    O=acrocomia_ref.dict
+    R=acrocomia_chr1.fna \
+    O=acrocomia_chr1.dict
+
 ```
 
 💡*Opcional, mas recomendado*
@@ -61,22 +63,26 @@ A chamada de variantes não é um passo simples, pois o GATK faz a chamada de va
 O primeiro passo é chamar as variantes para cada indivíduo. Nesta etapa, o GATK analisará cada arquivo .dedup.bam e gerará um arquivo .g.vcf.gz. O sufixo .g indica que o arquivo contém informações de confiança para todas as bases do genoma, não apenas para os polimorfismos. É um arquivo intermediário que precisamos usar antes de criar nosso arquivo VCF final.
 
 ```bash
+#Instalar GATK
+conda install bioconda::gatk4
+
 # Criar diretório para os gVCFs
 mkdir -p ~/workshop_bioinfo/results/gatk_gvcfs
 cd ~/workshop_bioinfo/data/alignment
 
 # Loop para processar todas as amostras de Acrocomia simultaneamente
-for bam in *.dedup.bam; do
-    SAMPLE=$(basename $bam .dedup.bam)
+for bam in *.sorted.dedup.bam; do
+    SAMPLE=$(basename $bam .sorted.dedup.bam)
     echo "Gerando gVCF para a amostra: $SAMPLE"
 
     gatk HaplotypeCaller \
-        -R ../../reference/acrocomia_ref.fasta \
+        -R ~/workshop_bioinfo/data/reference/acrocomia_chr1.fna \
         -I $bam \
-        -O ../../../results/gatk_gvcfs/${SAMPLE}.g.vcf.gz \
-        -native-pair-hmm-threads 4 \ 
+        -O ~/workshop_bioinfo/results/gatk_gvcfs/${SAMPLE}.g.vcf.gz \
+        -native-pair-hmm-threads 4 \
         -ERC GVCF
 done
+
 Esta é a parte mais demorada de todo o processo. É hora de tomar um café ☕. 
 ```
 💡 Verifique seu arquivo `gvcf` para garantir que ele tenha um arquivo de índice `.idx`. Se o `haplotypecaller` travar, ele produzirá um arquivo `gvcf` truncado que acabará travando a etapa `genotypegvcf`. 
@@ -92,9 +98,9 @@ O algoritmo exige um arquivo tabular indicando o nome biológico da amostra e o 
 cd ~/workshop_bioinfo/results/gatk_gvcfs
 
 # Gerar o Sample Map automaticamente com um loop
+> sample_map.txt
 for gvcf in *.g.vcf.gz; do
-    SAMPLE=$(basename $gvcf .g.vcf.gz)
-    # O comando 'echo -e' com '\t' insere uma tabulação (TAB) entre o nome e o arquivo
+    SAMPLE=$(basename "$gvcf" .g.vcf.gz)
     echo -e "${SAMPLE}\t${gvcf}" >> sample_map.txt
 done
 ```
@@ -102,7 +108,7 @@ A segunda particularidade é a necessidade estrita de paralelização espacial: 
 
 ```bash
 # Extrair a primeira coluna (nomes das sequências) do arquivo .fai para criar a lista
-awk '{print $1}' ~/workshop_bioinfo/data/reference/acrocomia_ref.fasta.fai > intervalos_acrocomia.list
+awk '{print $1}' ~/workshop_bioinfo/data/reference/acrocomia_chr1.fna.fai > intervalos_acrocomia.list
 
 # Visualizar os primeiros intervalos gerados
 head intervalos_acrocomia.list
@@ -127,9 +133,9 @@ Com o `genomicsDB` criado, estamos finalmente prontos para identificar variantes
 ```bash
 # Realizar a chamada de variantes lendo diretamente do banco de dados recém-criado
 gatk GenotypeGVCFs \
-    -R ~/workshop_bioinfo/data/reference/acrocomia_ref.fasta \
+    -R ~/workshop_bioinfo/data/reference/acrocomia_chr1.fna \
     -V gendb://banco_dados_acrocomia \
-    -O ../acrocomia_populacao_bruta.vcf.gz
+    -O ./acrocomia_populacao_bruta.vcf.gz
 ```
 ❓Vamos fazer um less neste arquivo. Como ele fica? Que variantes você consegue ver? 
 
@@ -139,7 +145,7 @@ O arquivo gerado ao final deste processo `(acrocomia_populacao_bruta.vcf.gz)` é
 Como estamos interessados apenas em SNPs, o primeiro passo é selecionar apenas essas marcas. 
 ```bash
 gatk SelectVariants \
--R reference.fasta \
+-R ~/workshop_bioinfo/data/reference/acrocomia_chr1.fna \
 -V acrocomia_populacao_bruta.vcf.gz \
 --select-type SNP \
 -O raw_snps.vcf.gz
@@ -147,6 +153,16 @@ gatk SelectVariants \
  
 ### C. Filtragem de SNPs
 Como podem ver, o arquivo final é chamado `raw_snps.vcf.gz`. Isso porque é um arquivo final sem filtros de qualidade nem nada. O GATK tem a função `VariantFiltration` que permite fazer esses filtros. 
+
+```bash
+gatk VariantFiltration \
+-R acrocomia_chr1.fna \
+-V raw_snps.vcf.gz \
+-O filtered_snps.vcf.gz \
+--filter-name "QD_filter" --filter-expression "QD < 2.0" \
+--filter-name "FS_filter" --filter-expression "FS > 60.0" \
+--filter-name "MQ_filter" --filter-expression "MQ < 40.0"
+```
 
 No entanto, existem outras duas ferramentas mais comuns e utilizadas para realizar esta etapa: `bcftools` e `VCFtools`. Iremos utilizá-las na próxima prática para realizar os filtros no nosso VCF e deixar o arquivo final pronto para as nossas análises. 
 
@@ -164,10 +180,17 @@ Diante desses desafios inerentes à genômica de espécies não-modelo, destacam
 ### 0. Preparação da Lista de Amostras
 O FreeBayes opera de maneira otimizada lendo os dados de todos os indivíduos da sua coorte de uma só vez. Isso confere ao algoritmo um enorme poder estatístico: se uma mutação rara aparece com alta qualidade em um indivíduo da população, o programa usará essa evidência para refinar a busca da mesma mutação nos demais indivíduos, mesmo naqueles com menor cobertura de sequenciamento.
 
+Vamos primero instalar o programa
+
+```bash
+conda install bioconda::freebayes
+```
+
 Antes de poder rodar o algoritmo, ele exige um arquivo de texto simples listando o caminho de todos os arquivos BAM que serão analisados. Vamos gerar essa lista automaticamente.
 
 ```bash
 # 1. Navegue para a pasta onde estão os BAMs processados e deduplicados
+mkdir ~/workshop_bioinfo/results/freebayes
 cd ~/workshop_bioinfo/data/alignment
 
 # 2. Indexar os arquivos bam
@@ -178,7 +201,7 @@ for bam in *.bam; do
 done
 
 # 3. Crie uma lista contendo os nomes de todos os arquivos .dedup.bam
-ls *.dedup.bam > lista_amostras_acrocomia.txt
+ls *.sorted.dedup.bam > lista_amostras_acrocomia.txt
 
 # 4. Verifique se a lista foi criada corretamente
 cat lista_amostras_acrocomia.txt
@@ -189,9 +212,9 @@ Agora estamos prontos para rodar freebayes. Vemos que é muito mais fácil e sim
 
 ```bash
 freebayes \
--f ../../reference/acrocomia_ref.fasta \
--L bamlist.txt \
-> ../../../results/freebayes_raw.vcf
+-f ~/workshop_bioinfo/data/reference/acrocomia_chr1.fna \
+-L lista_amostras_acrocomia.txt \
+> ~/workshop_bioinfo/results//freebayes_raw.vcf
 
 # -----------------------------------------
 Parâmetros utilizados: 
@@ -205,7 +228,7 @@ Parâmetros utilizados:
 Agora vamos inspecionar o VCF bruto sem filtros. 
 
 ```bash
-less -S ../../../results/freebayes/freebayes_raw.vcf
+less -S ~/workshop_bioinfo/results/freebayes_raw.vcf
 #O parâmetro -S evita a quebra de linha, permitindo rolar a tela lateralmente com as setas do teclado. 
 ```
 ❓Como o resultado do GATK difere do FreeBayes?
