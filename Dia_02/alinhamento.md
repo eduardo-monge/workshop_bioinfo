@@ -228,13 +228,13 @@ Usaremos a ferramenta `MarkDuplicates` de [Picard](https://gatk.broadinstitute.o
 ```bash
 # Executar a remoção de duplicatas com Picard MarkDuplicates
 picard MarkDuplicates \
-    I=Acro_01_filter.sorted.bam \
-    O=Acro_01.dedup.bam \
+    I=Acro_01.sorted.bam \
+    O=Acro_01.sorted.dedup.bam \
     M=Acro_01_dup_metrics.txt \
     REMOVE_DUPLICATES=true 
 
 # A geração de um novo arquivo BAM exige uma nova indexação
-samtools index Acro_01.dedup.bam
+samtools index Acro_01.sorted.dedup.bam
 
 # -----------------------------------------
 Os parámetros que estamos usando:
@@ -245,39 +245,49 @@ Os parámetros que estamos usando:
 # -----------------------------------------
 ```
 
-### 🤖 Automação do Pós-Processamento
-Tendo validado a eficácia do protocolo em uma amostra empírica, implementaremos um laço de repetição iterativo (loop) para processar toda a coorte de forma automatizada.
-```bash
-# Certifique-se de que o diretório ativo seja a pasta de alinhamento
-cd ~/workshop_bioinfo/data/processed/alignment
+Para todas as amostras
+```Bash
+for file in *.sorted.bam; do
+    # Pegar o nome da amostra (ej: Acro_01)
+    SAMPLE=$(basename "$file" .sorted.bam)
 
-for bam in *.bam; do
-    SAMPLE=$(basename $bam .bam)
-    echo "Iniciando processamento da amostra: $SAMPLE"
+    echo "Removiendo duplicados para la muestra: $SAMPLE"
 
-    # 1. Filtragem (-F 4 e -q 20) acoplada à ordenação posicional
-    echo "Aplicando filtros (MAPQ/Flags) e Ordenando"
-    samtools view -F 4 -q 20 -b $bam | samtools sort -o ${SAMPLE}.sorted.bam
-    
-    # 2. Supressão de Duplicatas de PCR
-    echo "Identificando e removendo duplicatas técnicas"
+    # Executar a remoção de duplicatas com Picard MarkDuplicates
     picard MarkDuplicates \
-        I=${SAMPLE}.sorted.bam \
-        O=${SAMPLE}.dedup.bam \
-        M=${SAMPLE}_dup_metrics.txt \
-        REMOVE_DUPLICATES=true 
+        I="$file" \
+        O="${SAMPLE}.sorted.dedup.bam" \
+        M="${SAMPLE}_dup_metrics.txt" \
+        REMOVE_DUPLICATES=true
 
-    # 3. Indexação do BAM final
-    echo "Computando índice genômico"
-    samtools index ${SAMPLE}.dedup.bam
+    echo "Indexando ${SAMPLE}.sorted.dedup.bam..."
+    # A geração de um novo arquivo BAM exige uma nova indexação
+    samtools index "${SAMPLE}.sorted.dedup.bam"
 
-    # 4. Higiene de Dados: Exclusão de matrizes intermediárias
-    rm $bam
-    rm ${SAMPLE}.sorted.bam
 done
 ```
-⚠️ **Atenção:**
-A exclusão de arquivos intermediários (.bam bruto e .sorted.bam) previne a exaustão da capacidade de armazenamento do servidor, retendo estritamente o arquivo .dedup.bam, que está lapidado e pronto para a inferência de variantes.
+
+
+Podemos gerar automaticamente um resumo da eliminação de duplicatas em nossos arquivos.
+```bash
+echo -e "Amostra\tPares_Avaliados\tTaxa_Duplicacao" > resumo_duplicatas.txt
+
+for file in *_dup_metrics.txt; do
+    # Extrair o nome base da amostra
+    SAMPLE=$(basename "$file" _dup_metrics.txt)
+    
+    # Extrair a linha de dados (logo abaixo do cabeçalho PERCENT_DUPLICATION)
+    DADOS=$(grep -A 1 "PERCENT_DUPLICATION" "$file" | tail -n 1)
+    
+    # Pegar as colunas específicas (3 = Pares, 9 = Porcentagem de Duplicação)
+    PARES=$(echo "$DADOS" | awk '{print $3}')
+    TAXA=$(echo "$DADOS" | awk '{print $9}')
+    
+    # Adicionar os dados ao nosso arquivo de resumo
+    echo -e "${SAMPLE}\t${PARES}\t${TAXA}" >> resumo_duplicatas.txt
+done
+```
+
 
 
 # 5. Check as estatísticas básicas do bam
@@ -291,37 +301,57 @@ Para esta fase, utilizaremos duas ferramentas do samtools:
 # 1. Navegar para o diretório com os BAM finais
 cd ~/workshop_bioinfo/data/processed/alignment
 
-# 2. Criar pasta para relatórios de QC
+# 2. Criar pasta para os stats
 mkdir stats
 
 # 3. Criar arquivo de resumo da profundidade média
-printf "Amostra\tProfundidade_Media\n" > ../stats/resumo_profundidade.txt
+printf "Sample\tTotal_reads\tMapped_reads\tMapped_percent\tDuplicates\tProperly_paired\n" > stats/flagstat_summary.tsv
 
 # 4. Loop para todas as amostras
-for bam in *.dedup.bam; do
+for bam in *.sorted.dedup.bam; do
 
-    SAMPLE=$(basename "$bam" .dedup.bam)
-    echo "Processando amostra: $SAMPLE"
+    SAMPLE=$(basename "$bam" .sorted.dedup.bam)
+    echo "Processando $SAMPLE"
 
-    # A. Estatísticas de alinhamento
-    samtools flagstat -a "$bam" > ../qc_alignment/"${SAMPLE}_flagstat.txt"
+    # generar flagstat
+    samtools flagstat "$bam" > stats/${SAMPLE}_flagstat.txt
 
-    # B. Cálculo da profundidade média
-    DEPTH=$(samtools depth "$bam" | awk '{sum+=$3} END {print sum/NR}')
+    FILE=stats/${SAMPLE}_flagstat.txt
 
-    # Guardar resultado no resumo
-    printf "%s\t%.2f\n" "$SAMPLE" "$DEPTH" >> ../qc_alignment/resumo_profundidade.txt
+    # extraer métricas
+    TOTAL=$(awk '/in total/ {print $1}' "$FILE")
+    MAPPED=$(awk '/ mapped \(/ && !/primary mapped/ {print $1}' "$FILE")
+    MAP_PERC=$(awk -F'[()%]' '/ mapped \(/ && !/primary mapped/ {print $2}' "$FILE")
+    DUP=$(awk '/duplicates$/ {print $1}' "$FILE" | head -n1)
+    PROPER=$(awk '/properly paired/ {print $1}' "$FILE")
+
+    # agregar a la tabla
+    printf "%s\t%s\t%s\t%s\t%s\t%s\n" \
+    "$SAMPLE" "$TOTAL" "$MAPPED" "$MAP_PERC" "$DUP" "$PROPER" \
+    >> stats/flagstat_summary.tsv
 
 done
 
 # -----------------------------------------
-Os parámetros que estamos usando:
-#printf=escrever o cabeçalho da tabela, contendo duas colunas:
-# -Amostra — identificação da amostra analisada
-# -Profundidade_Media — valor médio da cobertura de sequenciamento
-# O símbolo > indica redirecionamento de saída, o que significa que o conteúdo será escrito no arquivo especificado. Caso o arquivo já exista, ele será sobrescrito, garantindo que um novo resumo seja gerado para cada execução do script.
-#samtools flagstat -a=  Calcula um conjunto de estatísticas fundamentais do alinhamento. Incluindo -a incluimos posições com cobertura 0. 
-#samtools depth = calcula a profundidade média de cobertura genômica para cada amostra.
+Os parâmetros que estamos usando:
+
+# printf = escreve o cabeçalho da tabela que irá resumir as métricas de alinhamento obtidas para cada amostra. 
+# O cabeçalho contém as seguintes colunas:
+# - Sample — identificação da amostra analisada.
+# - Total_reads — número total de leituras presentes no arquivo BAM.
+# - Mapped_reads — número de leituras que foram alinhadas ao genoma de referência.
+# - Mapped_percent — porcentagem de leituras que foram alinhadas com sucesso.
+# - Duplicates — número de leituras marcadas como duplicadas.
+# - Properly_paired — número de leituras corretamente pareadas durante o alinhamento.
+
+# O símbolo > indica redirecionamento de saída, o que significa que o conteúdo será escrito no arquivo especificado. 
+# Caso o arquivo já exista, ele será sobrescrito, garantindo que um novo resumo seja gerado a cada execução do script.
+
+# samtools flagstat = calcula um conjunto de estatísticas fundamentais do alinhamento presentes em um arquivo BAM. 
+# Entre essas estatísticas estão o número total de leituras, leituras alinhadas, duplicadas e leituras corretamente pareadas.
+
+# awk = é utilizado para extrair valores específicos do arquivo de saída gerado por samtools flagstat, permitindo selecionar apenas
+# as métricas de interesse que serão adicionadas à tabela final de resumo.
 # -----------------------------------------
 
 ```
@@ -344,7 +374,7 @@ echo "Indexando o genoma de referência..."
 bwa index ../../reference/acrocomia_ref.fasta
 
 # 2. O Lloop de processamento
-for file in ../trimmed/*_clean.fastq; do
+for file in ../trimmed/*_trimmed.fastq; do
     # Extrair o nome da amostra
     SAMPLE=$(basename $file _clean.fastq)
     echo "Iniciando processamento em cadeia da amostra: $SAMPLE"
