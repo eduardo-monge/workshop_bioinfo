@@ -20,25 +20,51 @@ Ahora vamos a fazer o download do genoma via FTP (File Transfer Protocol), compa
 # 2. Baixar o genoma da Macaúba (Acrocomia aculeata)
 wget -c https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/055/471/735/GCA_055471735.1_USP_Acracu_1.0/GCA_055471735.1_USP_Acracu_1.0_genomic.fna.gz
 
-# 3. Descompactar o arquivo
-gunzip GCA_055471735.1_USP_Acracu_1.0_genomic.fna.gz
-
-# 4. Renomear para facilitar o uso (opcional, mas recomendado)
-mv GCA_055471735.1_ASM5547173v1_genomic.fna acrocomia_ref.fasta
+# 3. Renomear para facilitar o uso (opcional, mas recomendado)
+mv GCA_055471735.1_ASM5547173v1_genomic.fna acrocomia_ref.fna.gz
 ```
+
+Como o genoma é muito grande, na prática vamos usar apenas o cromossomo 1.
+```bash
+zcat acrocomia_ref.fna.gz | awk '
+/^>/ {
+    # Usamos "chromosome 1," com a vírgula no final para garantir que o 
+    # awk não pegue o cromossomo 10, 11 ou 12 por acidente!
+    if ($0 ~ /chromosome 1,/) {
+        extrair = 1
+        print $0
+    } else {
+        extrair = 0
+    }
+    next
+}
+extrair == 1 {print}
+' | gzip > acrocomia_chr1.fna.gz
+
+# -----------------------------------------
+O que o script faz:
+# 1. zcat: Descomprime o genoma original (.gz) em tempo real.
+# 2. awk verifica cada linha. Se for um cabeçalho (/^>/) e contiver "chromosome 1,", ele liga o "interruptor" (extrair = 1) e imprime o cabeçalho na tela.
+# 3. Se for qualquer outro cabeçalho (chromosome 2, chromosome 10, scaffold, etc), ele desliga o interruptor (extrair = 0).
+# 4. Enquanto o interruptor estiver ligado (extrair == 1), ele imprime as linhas de DNA.
+# 5. gzip: Recomprime apenas as linhas do cromossomo 1 e salva no novo arquivo.
+# -----------------------------------------
+
+```
+
 Agora vamos explorar o genoma de referência para nos familiarizarmos com ele. Lembre-se de que o genoma é um arquivo fasta. 
 
 ❓Como esperam que seja o genoma?
 ❓Quantas e quais sequências estão presentes no arquivo fasta que usaremos como referência?
 
 ```bash
-head acrocomia_ref.fasta
-grep -c "^>" acrocomia_ref.fasta
+zcat acrocomia_ref.fna.gz | head
+zcat acrocomia_ref.fna.gz | grep "^>"
 ```
 Uma boa prática é modificar o nome dos cromossomos para que seja muito mais simples ler nos próximos programas. Para isso, podemos usar o seguinte script para modificar e deixar o genoma pronto para fazer o índice. 
 
 ```bash
-awk '
+zcat acrocomia_ref.fna.gz | awk '
 BEGIN {chr=1; un=1}
 /^>/ {
     if ($0 ~ /chromosome/) {
@@ -51,21 +77,23 @@ BEGIN {chr=1; un=1}
     next
 }
 {print}
-' acrocomia_ref.fasta > acrocomia_ref_renamed.fasta
+' | gzip > acrocomia_ref_rename.fna.gz
 
 # -----------------------------------------
-O que o script faz
-#1. Detecta cabeçalhos FASTA (/^>/)
-#2. Modifica apenas linhas que começam com >.
-#3. Se o cabeçalho contiver “cromossomo” ($0 ~ /cromossomo/), então atribui:
-#>CHR1
-#>CHR2
-#>CHR3
-#usando o contador chr.
-#4. Se não, presume que é um contíguo não resolvido:
-#>UNRE1
-#>UNRE2
-#usando o contador un.
+O que o script faz:
+# 1. zcat: Descomprime o genoma original (.gz) em tempo real para leitura.
+# 2. Detecta cabeçalhos FASTA (/^>/).
+# 3. Modifica apenas linhas que começam com >.
+# 4. Se o cabeçalho contiver "chromosome" ($0 ~ /chromosome/), então atribui:
+# >CHR1
+# >CHR2
+# >CHR3
+# usando o contador chr.
+# 5. Se não, presume que é um contíguo não resolvido (scaffold) e atribui:
+# >UNRE1
+# >UNRE2
+# usando o contador un.
+# 6. gzip: Recomprime o resultado instantaneamente e salva o novo arquivo .gz.
 # -----------------------------------------
 ```
 
@@ -75,7 +103,10 @@ Com o genoma de referência pronto e conhecido, podemos gerar o índice. Lembre-
 Este é um processo muito simples, utilizando o programa [bwa](https://github.com/lh3/bwa).
 
 ```bash
-bwa index acrocomia_ref_renamed.fasta
+bwa index acrocomia_ref_rename.fna.gz
+
+Se o programa estiver dentro de uma pasta:
+./bwa index ../../data/reference/acrocomia_ref_rename.fna.gz
 ```
 
 🔍 O que observar: 
@@ -92,7 +123,7 @@ Primeiro, vamos organizar onde os resultados (arquivos SAM) serão salvos.
 
 ```bash
 # 1. Criar pasta para o alinhamento e entrar nela
-cd ~/workshop_bioinfo/data/processed
+cd ~/workshop_bioinfo/data/
 mkdir -p alignment
 cd alignment
 ```
@@ -104,9 +135,9 @@ Vamos testar o comando para a primeira amostra para compreender o que está send
 Comando para alinhar UMA amostra
 bwa mem -t 4 \
     -R "@RG\tID:Acro_01\tSM:Acro_01\tPL:ILLUMINA" \
-    ../../reference/acrocomia_ref_renamed.fasta \
-    ../trimmed/Acrocomia_pop1_.fastq \
-    > Acro_01.sam
+    ../../data/reference/acrocomia_ref_renamed.fna.gz \
+    ../../data/trimmed/AM_04_trimmed.fq.gz \
+    > ../../data/alignment/AM_04.sam
 
 # -----------------------------------------
 Os parámetros que estamos usando:
