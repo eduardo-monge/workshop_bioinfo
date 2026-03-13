@@ -9,7 +9,7 @@ Nesta primeira prática, vamos configurar nosso ambiente de trabalho e aprender 
 conda env create -f snp_calling_env.yaml
 conda activate snp_calling
 
-[snp_calling_env.yaml](https://github.com/user-attachments/files/25969835/snp_calling_env.yaml)#
+[snp_calling_env.yaml](https://github.com/user-attachments/files/25969835/snp_calling_env.yaml)
 ```
 ---
 
