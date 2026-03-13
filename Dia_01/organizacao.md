@@ -6,10 +6,11 @@ Nesta primeira prática, vamos configurar nosso ambiente de trabalho e aprender 
 ## 0. Criando o ambiente de CONDA com todos os programas que vamos a usar
 
 ``` bash
+1. Descarregar o snp_calling_env.yaml e deixar dentro da pasta de UBUNTU. 
+
+2. Rodar os ambientes
 conda env create -f snp_calling_env.yaml
 conda activate snp_calling
-
-[snp_calling_env.yaml](https://github.com/user-attachments/files/25969835/snp_calling_env.yaml)
 ```
 ---
 
