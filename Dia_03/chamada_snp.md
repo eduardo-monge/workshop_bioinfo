@@ -279,10 +279,23 @@ A metodologia mais eficiente e segura consiste em organizar seus metadados previ
 
 ```bash
 # 1. Navegue até a pasta de dados onde o STACKS buscará as informações
-cd ~/workshop_bioinfo/data/
+mkdir -p ~/workshop_bioinfo/results/stacks_denovo
 
 # 2. Abra o editor de texto nativo do Linux (nano) criando um novo arquivo
 nano popmap.txt
+
+#Copiar e colar
+AM_04_trimmed   amazonas
+AM_05_trimmed   amazonas
+G109_trimmed    guatemala
+G111_trimmed    guatemala
+rifania10_trimmed       sao_paulo
+rifania8_trimmed        sao_paulo
+luz_20m_trimmed minas
+luz_25m_trimmed minas
+veracruz-mex-L1p2_trimmed       mexico
+veracruz-mex-L3p2_trimmed       mexico
+
 
 #Para salvar o arquivo no nano, pressione Ctrl+O, confirme o nome apertando Enter, e saia do editor pressionando Ctrl+X.
 ```
@@ -291,18 +304,17 @@ nano popmap.txt
 A beleza do `denovo_map.pl` reside na sua capacidade de condensar toda essa complexidade em um único comando de terminal. Para executá-lo, precisaremos dos nossos arquivos FASTQ limpos e desmultiplexados, além dos arquivos gerados anteriormente. 
 
 ```bash
-# 1. Criar o diretório para acomodar os resultados estruturados do STACKS
-mkdir -p ~/workshop_bioinfo/results/variants/stacks_denovo
-
 # 2. Executar o pipeline orquestrador De Novo
-denovo_map.pl -T 4 \
-              -M 3 \
-              -n 3 \
-              -o ~/workshop_bioinfo/results/variants/stacks_denovo \
-              --write-single-snp \
-              --min-samples-per-pop 0.7 \ 
-              --samples ~/workshop_bioinfo/data/processed/demultiplex \
-              --popmap ~/workshop_bioinfo/data/popmap.txt
+denovo_map.pl \
+-T 4 \
+-m 3 \
+-M 3 \
+-n 3 \
+-i 1 \
+-b 1 \
+-o . \
+-O popmap.txt \
+--samples ~/workshop_bioinfo/data/trimmed
 
 # -----------------------------------------
 Parâmetros utilizados: 
@@ -310,10 +322,9 @@ Parâmetros utilizados:
 # -M: O número máximo de nucleotídeos divergentes permitidos entre duas sequências para que o programa as considere como sendo alelos do mesmo locus em um único indivíduo.
 # n: O número máximo de nucleotídeos divergentes permitidos ao fundir loci de indivíduos diferentes para a construção do catálogo.
 # -o: arquivo VCF de saída
-# --write-single-snp: Exporta apenas um SNP por locus, útil para evitar linkage em análises populacionais.
-# --min-samples-per-pop: Define proporção mínima de indivíduos por população para manter um locus. 0.7 significa 70% dos indivíduos da população.
-# --samples: a pasta onde os arquivos das amostras estão armazenados
-# --popmap: arquivo descritivo das subpopulações
+#-b: o número que damos para o processo
+# --p: a pasta onde os arquivos das amostras estão armazenados
+# --O: arquivo descritivo das subpopulações
 # -----------------------------------------
 ```
 
