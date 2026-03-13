@@ -1,7 +1,16 @@
-# 💻 Prática Dia 1: Organização de Projeto e Exploração de Dados
+[snp_calling_env.yaml](https://github.com/user-attachments/files/25969835/snp_calling_env.yaml)# 💻 Prática Dia 1: Organização de Projeto e Exploração de Dados
 
 Nesta primeira prática, vamos configurar nosso ambiente de trabalho e aprender comandos essenciais para manipular e explorar arquivos de sequenciamento.
 
+
+## 0. Criando o ambiente de CONDA com todos os programas que vamos a usar
+
+``` bash
+conda env create -f snp_calling_env.yaml
+conda activate snp_calling
+
+
+```
 ---
 
 ## 1. Configuração da Estrutura de Diretórios
