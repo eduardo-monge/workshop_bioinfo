@@ -148,7 +148,8 @@ grep -vc "^#" final_filtered_snps.recode.vcf
 
 Em seguida, é necessário fazer a indexação do vcf gerado.
 ```bash
-bcftools index final_filtered_snps.recode.vcf
+bgzip final_filtered_snps.recode.vcf
+bcftools index final_filtered_snps.recode.vcf.gz
 ```
 ❓O número final do SNPS mudou?
 
