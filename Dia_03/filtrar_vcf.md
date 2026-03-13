@@ -83,12 +83,6 @@ bcftools filter \
 filtered_snps.vcf.gz
 ```
 
-Em seguida, é necessário fazer a indexação do vcf gerado.
-```bash
-bcftools index filtered_snps.vcf.gz
-```
-
-
 Após aplicarmos os primeiros filtros temos que entender a taxa de retenção dos dados. Quantos polimorfismos tínhamos na população bruta e quantos sobreviveram depois da filtragem? 
 
 Podemos descobrir isso usando a mesma ferramenta `bcftools view`
@@ -152,6 +146,10 @@ vcftools \
 grep -vc "^#" final_filtered_snps.recode.vcf
 ```
 
+Em seguida, é necessário fazer a indexação do vcf gerado.
+```bash
+bcftools index final_filtered_snps.recode.vcf
+```
 ❓O número final do SNPS mudou?
 
 
