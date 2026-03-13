@@ -305,13 +305,11 @@ A beleza do `denovo_map.pl` reside na sua capacidade de condensar toda essa comp
 
 ```bash
 # 2. Executar o pipeline orquestrador De Novo
-denovo_map.pl \
+~/workshop_bioinfo/programs/stacks-2.68/scripts/denovo_map.pl \
 -T 4 \
 -m 3 \
 -M 3 \
 -n 3 \
--i 1 \
--b 1 \
 -o . \
 -O popmap.txt \
 --samples ~/workshop_bioinfo/data/trimmed
