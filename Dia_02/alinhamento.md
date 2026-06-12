@@ -220,8 +220,8 @@ for file in ./*_nofilers.bam ; do
 done
 ```
 
-### B. Mitigação de Vieses Técnicos: Duplicatas de PCR (Picard)
-Durante a confecção das bibliotecas genômicas, a etapa de amplificação por PCR pode introduzir um viés estocástico, gerando cópias artificiais (clones) de um mesmo fragmento de DNA. Se estas duplicatas não forem expurgadas, o algoritmo de Variant Calling interpretará erroneamente essas cópias como evidência de alta profundidade de cobertura para um alelo específico, distorcendo severamente as estimativas de frequências alélicas da população. 
+### B. Mitigação de Vieses Técnicos: Duplicatas de PCR (Picard) - NÃO APLICA PARA GBS. GBS SINGLE-END NÃO PRECISA RODAR. 
+Durante a confecção das bibliotecas genômicas, a etapa de amplificação por PCR pode introduzir um viés estocástico, gerando cópias artificiais (clones) de um mesmo fragmento de DNA. Se estas duplicatas não forem expurgadas, o algoritmo de Variant Calling interpretará erroneamente essas cópias como evidência de alta profundidade de cobertura para um alelo específico, distorcendo severamente as estimativas de frequências alélicas da população. No caso de GBS Single-end, não precissa rodar. Fica só de referência para outro tipo de bibliotecas. 
 
 Usaremos a ferramenta `MarkDuplicates` de [Picard](https://gatk.broadinstitute.org/hc/en-us/articles/360037052812-MarkDuplicates-Picard) para mitigar este artefato.
 
